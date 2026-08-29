@@ -75,6 +75,7 @@ document.getElementById('btn-host').addEventListener('click', () => {
         switchToScreen('waiting-screen');
     }).catch((error) => {
         console.error("Firebase Host Error:", error);
+        alert("ফায়ারবেস কানেকশনে সমস্যা হচ্ছে! ডোমেইন অথরাইজেশন চেক করুন।");
     });
 });
 
@@ -200,6 +201,7 @@ function renderGameTable(roomData) {
     document.getElementById('scoreboard-display').innerText = `${team1Text} | ${team2Text}`;
 }
 
+// লগ এবং রাউন্ড হিস্টোরি রেন্ডার
 function renderLogAndHistory(roomData) {
     const logBox = document.getElementById('log-history-list');
     const scoreBox = document.getElementById('score-history-list');
