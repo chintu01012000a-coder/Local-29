@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>অনলাইন টোয়েন্টি নাইন (29) কার্ড গেম</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+    <!-- ১. হোস্ট এবং জয়েন করার লবি স্ক্রিন -->
+    <div id="lobby-screen" class="screen active">
+        <div class="lobby-card">
+            <h1>🃏 টোয়েন্টি নাইন কার্ড গেম 🃏</h1>
+            <p class="subtitle">অনলাইন মাল্টিপ্লেয়ার লবি</p>
+            
+            <div class="input-group">
+                <label for="player-name">আপনার নাম:</label>
+                <input type="text" id="player-name" placeholder="এখানে নাম লিখুন (বাধ্যতামূলক)..." autocomplete="off">
+            </div>
+
+            <div class="action-box">
+                <div class="host-section">
+                    <h3>নতুন গেম শুরু করুন</h3>
+                    <button id="btn-host" class="btn btn-primary">🏠 হোস্ট গেম</button>
+                </div>
+                
+                <div class="divider">অথবা</div>
+                
+                <div class="join-section">
+                    <h3>বন্ধুর গেমে জয়েন করুন</h3>
+                    <input type="number" id="room-code-input" placeholder="৬ ডিজিটের রুম কোড দিন..." autocomplete="off">
+                    <button id="btn-join" class="btn btn-success">🚪 জয়েন গেম</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ২. ওয়েটিং লবি রুম (৪ জন পূর্ণ হওয়ার অপেক্ষা) -->
+    <div id="waiting-screen" class="screen">
+        <div class="waiting-card">
+            <h2>🏠 গেম রুম তৈরি হয়েছে!</h2>
+            <div class="share-box">
+                <p>আপনার বন্ধুদের কোডটি শেয়ার করুন:</p>
+                <div class="code-display" id="display-room-code">000000</div>
+                <button id="btn-copy" class="btn btn-small">📋 কোড কপি করুন</button>
+            </div>
+            <div class="players-list-box">
+                <h3>কানেক্টেড প্লেয়ার্স (<span id="connected-count">1</span>/4):</h3>
+                <ul id="waiting-players-list">
+                    <!-- প্লেয়ারদের নাম এখানে রিয়েল-টাইমে যোগ হবে -->
+                </ul>
+            </div>
+            <p class="animate-pulse">বাকি বন্ধুদের জয়েন করার জন্য অপেক্ষা করা হচ্ছে...</p>
+        </div>
+    </div>
+
+    <!-- ৩. মূল গেম টেবিল স্ক্রিন -->
+    <div id="game-screen" class="screen">
+        <div class="game-container">
+            
+            <!-- টপ বার: স্কোরবোর্ড ও রুম আইডি -->
+            <div class="game-top-bar">
+                <div class="room-indicator">রুম কোড: <span id="current-room-text">#000000</span></div>
+                <div id="scoreboard-display" class="live-score">a&b ♥️0 | c&d ♥️0</div>
+            </div>
+
+            <!-- ৪ জন প্লেয়ারের বসার টেবিল (অ্যান্টি-ক্লকওয়াইজ) -->
+            <div class="card-table">
+                <!-- উত্তর: দ্বিতীয় প্লেয়ার (Partner) -->
+                <div class="player-slot north" id="slot-north">
+                    <div class="player-avatar">👤</div>
+                    <div class="player-info" id="name-north">অপেক্ষা করা হচ্ছে...</div>
+                </div>
+
+                <!-- পশ্চিম: তৃতীয় প্লেয়ার (Opponent) -->
+                <div class="player-slot west" id="slot-west">
+                    <div class="player-avatar">👤</div>
+                    <div class="player-info" id="name-west">অপেক্ষা করা হচ্ছে...</div>
+                </div>
+
+                <!-- পূর্ব: প্রথম প্লেয়ার (Opponent) -->
+                <div class="player-slot east" id="slot-east">
+                    <div class="player-avatar">👤</div>
+                    <div class="player-info" id="name-east">অপেক্ষা করা হচ্ছে...</div>
+                </div>
+
+                <!-- টেবিলের কেন্দ্র -->
+                <div class="table-center" id="table-board">
+                    <div id="bidding-status-overlay" class="center-info-box">
+                        <span id="bid-text">বিড শুরু হওয়ার অপেক্ষায়</span>
+                    </div>
+                    <div class="played-cards-area" id="played-cards-container"></div>
+                </div>
+
+                <!-- দক্ষিণ: ডিলার/আপনি -->
+                <div class="player-slot south" id="slot-south">
+                    <div class="player-avatar">👑</div>
+                    <div class="player-info" id="name-south">আপনি (ডিলার)</div>
+                </div>
+            </div>
+
+            <!-- ইউজার কন্ট্রোল প্যানেল -->
+            <div class="user-panel">
+                <div id="action-popups" class="action-panel-overlay hidden">
+                    <!-- ডাইনামিক বাটনসমূহ জাভাস্ক্রিপ্ট দিয়ে আসবে -->
+                </div>
+
+                <div class="my-hand-container">
+                    <h4>আপনার হাতের কার্ডসমূহ:</h4>
+                    <div class="cards-flex" id="my-cards-deck">
+                        <!-- কার্ডগুলো শো হবে -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- সাইড/বটম প্যানেল: লগ এবং স্কোর হিস্টোরি -->
+            <div class="history-panel">
+                <div class="panel-box log-box">
+                    <h4>📜 লাইভ গেম লগ (Log History)</h4>
+                    <div class="panel-content" id="log-history-list"></div>
+                </div>
+                
+                <div class="panel-box history-box">
+                    <h4>📊 রাউন্ডের ফলাফল (Score History)</h4>
+                    <div class="panel-content" id="score-history-list"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ফায়ারবেস স্ক্রিপ্ট লাইব্রেরিসমূহ (ভুল এড়াতে app.js এর ঠিক ওপরে রাখা হয়েছে) -->
+    <script src="https://gstatic.com"></script>
+    <script src="https://gstatic.com"></script>
+    <script src="./app.js"></script>
+</body>
+</html>
