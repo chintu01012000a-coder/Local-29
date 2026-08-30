@@ -3,8 +3,8 @@
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDVbCa4CzJV-O7gJHBkf_DPifUsQJWcHpc",
-  authDomain: "firebaseapp.com",
-  databaseURL: "https://firebaseio.com",
+  authDomain: "local-cc0b6.firebaseapp.com",
+  databaseURL: "https://local-cc0b6-default-rtdb.firebaseio.com",
   projectId: "local-cc0b6",
   storageBucket: "local-cc0b6.firebasestorage.app",
   messagingSenderId: "391143435553",
