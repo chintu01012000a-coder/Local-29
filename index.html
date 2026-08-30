@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>অনলাইন টোয়েন্টি নাইন (29) কার্ড গেম</title>
     <link rel="stylesheet" href="./style.css">
+    
+    <!-- ফায়ারবেস স্টেবল কোর লাইব্রেরি (v8) -->
+    <script src="https://gstatic.com" crossorigin="anonymous"></script>
+    <script src="https://gstatic.com" crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -52,7 +56,7 @@
             </div>
             
             <div class="players-list-box">
-                <h3>কানেক্টেড প্লেয়ার্স (<span id="connected-count">1</span>/4):</h3>
+                <h3>কানেক্টেড প্লেয়ারส์ (<span id="connected-count">1</span>/4):</h3>
                 <ul id="waiting-players-list"></ul>
             </div>
 
@@ -127,9 +131,7 @@
         </div>
     </div>
 
-    <!-- ফায়ারবেস কোর এবং ডাটাবেজ লাইব্রেরি স্ক্রিপ্ট -->
-    <script src="https://gstatic.com" crossorigin="anonymous"></script>
-    <script src="https://gstatic.com" crossorigin="anonymous"></script>
+    <!-- মেইন ইঞ্জিন কোড লোড -->
     <script src="./app.js"></script>
 </body>
 </html>
