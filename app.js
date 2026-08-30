@@ -2,14 +2,12 @@
 // ১. ফায়ারবেস নতুন কনফিগারেশন ইন্টিগ্রেশন
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyDVbCa4CzJV-O7gJHBkf_DPifUsQJWcHpc",
-  authDomain: "://firebaseapp.com",
-  databaseURL: "https://firebaseio.com",
-  projectId: "local-cc0b6",
-  storageBucket: "local-cc0b6.firebasestorage.app",
-  messagingSenderId: "391143435553",
-  appId: "1:391143435553:web:fbd91cef38d1ee5581a260",
-  measurementId: "G-LY2YHJFV0P"
+  apiKey: "AIzaSyDKgkuUHrkBYz7Ze47q35kemuZBupcVB_M",
+  authDomain: "callbreak-local.firebaseapp.com",
+  projectId: "callbreak-local",
+  storageBucket: "callbreak-local.firebasestorage.app",
+  messagingSenderId: "697439144169",
+  appId: "1:697439144169:web:002d7a680d81b6c8788878"
 };
 
 // গ্লোবাল গেম স্টেট ট্র্যাকার
