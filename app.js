@@ -3,7 +3,7 @@
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDVbCa4CzJV-O7gJHBkf_DPifUsQJWcHpc",
-  authDomain: "://firebaseapp.com",
+  authDomain: "firebaseapp.com",
   databaseURL: "https://firebaseio.com",
   projectId: "local-cc0b6",
   storageBucket: "local-cc0b6.firebasestorage.app",
