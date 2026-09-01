@@ -1,137 +1,515 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>অনলাইন টোয়েন্টি নাইন (29) কার্ড গেম</title>
-    <link rel="stylesheet" href="./style.css">
-    
-    <!-- ফায়ারবেস স্টেবল কোর লাইব্রেরি (v8) -->
-    <script src="https://gstatic.com" crossorigin="anonymous"></script>
-    <script src="https://gstatic.com" crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ঊনত্রিশ | Twenty-Nine Card Game</title>
+<meta name="description" content="Twenty-Nine (29) তাস খেলা — বন্ধুদের সাথে অনলাইনে খেলুন">
+<meta name="theme-color" content="#06231A">
+
+<!-- ============================================================
+     GOOGLE FONTS
+     Cinzel   -> display/headline face (room code, titles, chips)
+     Hind Siliguri -> body face, supports Bengali + Latin script
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- ১. হোস্ট এবং জয়েন করার লবি স্ক্রিন -->
-    <div id="lobby-screen" class="screen active">
-        <div class="lobby-card">
-            <h1>🃏 টোয়েন্টি নাইন কার্ড গেম 🃏</h1>
-            <p class="subtitle">অনলাইন মাল্টিপ্লেয়ার লবি</p>
-            
-            <div class="input-group">
-                <label for="player-name">আপনার নাম:</label>
-                <input type="text" id="player-name" placeholder="এখানে নাম লিখুন (বাধ্যতামূলক)..." autocomplete="off">
-            </div>
+<!-- Decorative fixed backdrop (wood + felt vignette), purely visual -->
+<div class="table-backdrop" aria-hidden="true"></div>
 
-            <!-- গেম খেলার ৪টি অপশন মোড -->
-            <div class="mode-selection">
-                <h3>গেম মোড সিলেক্ট করুন:</h3>
-                <label><input type="radio" name="game-mode" value="1H3B" checked> ১ জন মানুষ + ৩ জন বট (AI)</label>
-                <label><input type="radio" name="game-mode" value="2H2B"> ২ জন মানুষ + ২ জন বট (AI)</label>
-                <label><input type="radio" name="game-mode" value="3H1B"> ৩ জন মানুষ + ১ জন বট (AI)</label>
-                <label><input type="radio" name="game-mode" value="4H0B"> ৪ জন মানুষ (কোনো বট থাকবে না)</label>
-            </div>
+<div id="app">
 
-            <div class="action-box">
-                <div class="host-section">
-                    <button id="btn-host" class="btn btn-primary">🏠 হোস্ট গেম</button>
-                </div>
-                <div class="divider">অথবা</div>
-                <div class="join-section">
-                    <input type="number" id="room-code-input" placeholder="৬ ডিজিটের রুম কোড দিন..." autocomplete="off">
-                    <button id="btn-join" class="btn btn-success">🚪 জয়েন গেম</button>
-                </div>
-            </div>
+  <!-- =====================================================================
+       SCREEN 1 — ENTRY: NAME ENTRY + GAME MODE SELECTION + HOST / JOIN
+       This is the screen shown the moment the app opens.
+       ===================================================================== -->
+  <section id="screen-entry" class="screen screen--active">
+    <div class="entry-card">
+
+      <header class="entry-header">
+        <h1 class="brand-title">
+          ঊনত্রিশ
+          <span class="brand-title-sub">Twenty&nbsp;Nine &middot; ২৯ তাস খেলা</span>
+        </h1>
+        <p class="brand-tagline">চারজনের আসর, দুই জোট, একটাই তুরুপ।</p>
+      </header>
+
+      <!-- ---------- Player name (mandatory) ---------- -->
+      <div class="field name-field">
+        <label for="player-name">আপনার নাম <span class="required" title="আবশ্যক">*</span></label>
+        <input
+          type="text"
+          id="player-name"
+          name="player-name"
+          class="text-input"
+          placeholder="যেমন: রাহুল"
+          maxlength="20"
+          autocomplete="off"
+          required>
+      </div>
+
+      <!-- ---------- Game mode selection (4 configurations) ---------- -->
+      <div class="mode-select">
+        <h2 class="section-label">খেলার ধরন বেছে নিন</h2>
+
+        <div class="mode-grid">
+
+          <!-- Mode A: 1 Human vs 3 Bots -->
+          <input type="radio" name="game-mode" id="mode-a" class="mode-radio" value="A" checked>
+          <label for="mode-a" class="mode-card">
+            <span class="mode-card-top">
+              <span class="mode-card-badge">A</span>
+              <span class="seat-dots" aria-hidden="true">
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--bot"></span>
+                <span class="seat-dot seat-dot--bot"></span>
+                <span class="seat-dot seat-dot--bot"></span>
+              </span>
+            </span>
+            <span class="mode-card-title">একা বনাম তিন বট</span>
+            <span class="mode-card-sub">1 Human &middot; 3 Bots</span>
+          </label>
+
+          <!-- Mode B: 2 Humans + 2 Bots -->
+          <input type="radio" name="game-mode" id="mode-b" class="mode-radio" value="B">
+          <label for="mode-b" class="mode-card">
+            <span class="mode-card-top">
+              <span class="mode-card-badge">B</span>
+              <span class="seat-dots" aria-hidden="true">
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--bot"></span>
+                <span class="seat-dot seat-dot--bot"></span>
+              </span>
+            </span>
+            <span class="mode-card-title">দুই খেলোয়াড় + দুই বট</span>
+            <span class="mode-card-sub">2 Humans &middot; 2 Bots</span>
+          </label>
+
+          <!-- Mode C: 3 Humans + 1 Bot -->
+          <input type="radio" name="game-mode" id="mode-c" class="mode-radio" value="C">
+          <label for="mode-c" class="mode-card">
+            <span class="mode-card-top">
+              <span class="mode-card-badge">C</span>
+              <span class="seat-dots" aria-hidden="true">
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--bot"></span>
+              </span>
+            </span>
+            <span class="mode-card-title">তিন খেলোয়াড় + এক বট</span>
+            <span class="mode-card-sub">3 Humans &middot; 1 Bot</span>
+          </label>
+
+          <!-- Mode D: 4 Humans, pure online -->
+          <input type="radio" name="game-mode" id="mode-d" class="mode-radio" value="D">
+          <label for="mode-d" class="mode-card">
+            <span class="mode-card-top">
+              <span class="mode-card-badge">D</span>
+              <span class="seat-dots" aria-hidden="true">
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--human"></span>
+                <span class="seat-dot seat-dot--human"></span>
+              </span>
+            </span>
+            <span class="mode-card-title">সম্পূর্ণ অনলাইন ম্যাচ</span>
+            <span class="mode-card-sub">4 Humans &middot; Pure Online</span>
+          </label>
+
         </div>
-    </div>
+      </div>
 
-    <!-- ২. ওয়েটিং লবি ও পার্টনারশিপ সেটআপ স্ক্রিন -->
-    <div id="waiting-screen" class="screen">
-        <div class="waiting-card">
-            <h2>🏠 গেম লবি রুম</h2>
-            <div class="share-box">
-                <p>বন্ধুদের কোডটি শেয়ার করুন:</p>
-                <div class="code-display" id="display-room-code">000000</div>
-                <button id="btn-copy" class="btn btn-small">📋 কোড কপি করুন</button>
-            </div>
-            
-            <div class="players-list-box">
-                <h3>কানেক্টেড প্লেয়ারส์ (<span id="connected-count">1</span>/4):</h3>
-                <ul id="waiting-players-list"></ul>
-            </div>
+      <!-- ---------- Host / Join actions ---------- -->
+      <div class="entry-actions">
+        <button type="button" id="btn-host-game" class="btn btn--brass btn--full">
+          রুম তৈরি করুন
+          <span class="btn-sub">Host Game</span>
+        </button>
 
-            <!-- হোস্টের জন্য পার্টনারশিপ প্যানেল -->
-            <div id="partnership-panel" class="host-only hidden">
-                <h3>🤝 পার্টনারশিপ সেটআপ (শুধুমাত্র হোস্ট)</h3>
-                <p>ডিলার ও প্লেয়ার ২ পার্টনার এবং প্লেয়ার ১ ও প্লেয়ার ৩ পার্টনার হবেন।</p>
-                <button id="btn-lock-partnership" class="btn btn-primary">🔒 পার্টনারশিপ লক ও গেম স্টার্ট</button>
+        <!-- CSS-only toggle: checking this reveals the join panel below -->
+        <input type="checkbox" id="toggle-join" class="visually-hidden-toggle">
+        <label for="toggle-join" class="btn btn--outline btn--full">
+          গেমে যোগ দিন
+          <span class="btn-sub">Join Game</span>
+        </label>
+
+        <!-- ---------- Join panel (revealed by the checkbox above) ---------- -->
+        <div id="join-panel" class="join-panel">
+          <div class="field">
+            <label for="join-name">আপনার নাম <span class="required" title="আবশ্যক">*</span></label>
+            <input
+              type="text"
+              id="join-name"
+              class="text-input"
+              placeholder="যেমন: রাহুল"
+              maxlength="20"
+              autocomplete="off"
+              required>
+          </div>
+
+          <div class="field room-code-field">
+            <label for="join-code-0">৬-সংখ্যার রুম কোড <span class="required" title="আবশ্যক">*</span></label>
+            <div class="code-boxes" id="join-code-boxes">
+              <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" data-code-index="0" id="join-code-0" aria-label="রুম কোডের ১ম সংখ্যা">
+              <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" data-code-index="1" aria-label="রুম কোডের ২য় সংখ্যা">
+              <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" data-code-index="2" aria-label="রুম কোডের ৩য় সংখ্যা">
+              <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" data-code-index="3" aria-label="রুম কোডের ৪র্থ সংখ্যা">
+              <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" data-code-index="4" aria-label="রুম কোডের ৫ম সংখ্যা">
+              <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="1" class="code-box" data-code-index="5" aria-label="রুম কোডের ৬ষ্ঠ সংখ্যা">
             </div>
-            <p id="client-wait-text" class="animate-pulse">হোস্ট গেম স্টার্ট করার জন্য অপেক্ষা করা হচ্ছে...</p>
+          </div>
+
+          <button type="button" id="btn-join-game" class="btn btn--brass btn--full">লবিতে প্রবেশ করুন</button>
         </div>
+      </div>
+
+      <p class="entry-footnote">হোস্ট করলে একটি নতুন রুম কোড তৈরি হবে, যা আপনি বন্ধুদের সাথে শেয়ার করতে পারবেন।</p>
     </div>
+  </section>
 
-    <!-- ৩. মূল গেম টেবিল স্ক্রিন -->
-    <div id="game-screen" class="screen">
-        <div class="game-container">
-            <div class="game-top-bar">
-                <div class="room-indicator">রুম কোড: <span id="current-room-text">#000000</span></div>
-                <div id="scoreboard-display" class="live-score">Player 1 & 3 ♥️0 | Dealer & Player 2 ♥️0</div>
-            </div>
 
-            <div class="card-table">
-                <!-- উত্তর: দ্বিতীয় প্লেয়ার -->
-                <div class="player-slot north" id="slot-north">
-                    <div class="player-avatar">👤</div>
-                    <div class="player-info" id="name-north">North (Player 2)</div>
-                </div>
-                <!-- পশ্চিম: তৃতীয় প্লেয়ার -->
-                <div class="player-slot west" id="slot-west">
-                    <div class="player-avatar">👤</div>
-                    <div class="player-info" id="name-west">West (Player 3)</div>
-                </div>
-                <!-- পূর্ব: প্রথম প্লেয়ার -->
-                <div class="player-slot east" id="slot-east">
-                    <div class="player-avatar">👤</div>
-                    <div class="player-info" id="name-east">East (Player 1)</div>
-                </div>
-                <!-- টেবিলের কেন্দ্রভাগ -->
-                <div class="table-center" id="table-board">
-                    <div id="bidding-status-overlay" class="center-info-box">
-                        <span id="bid-text">কার্ড ডিল করার অপেক্ষায়...</span>
-                    </div>
-                    <div class="played-cards-area" id="played-cards-container"></div>
-                </div>
-                <!-- দক্ষিণ: ডিলার/ইউজার নিজেই -->
-                <div class="player-slot south" id="slot-south">
-                    <div class="player-avatar">👑</div>
-                    <div class="player-info" id="name-south">আপনি (South)</div>
-                </div>
-            </div>
+  <!-- =====================================================================
+       SCREEN 2 — ROOM LOBBY: SEATS, ROOM CODE, PARTNERSHIP SETUP (HOST)
+       ===================================================================== -->
+  <section id="screen-lobby" class="screen">
+    <div class="lobby-wrap">
 
-            <!-- ইউজার কন্ট্রোল ও অ্যাকশন প্যানেল -->
-            <div class="user-panel">
-                <div id="action-popups" class="action-panel-overlay hidden"></div>
-                <div class="my-hand-container">
-                    <h4>আপনার হাতের কার্ডসমূহ:</h4>
-                    <div class="cards-flex" id="my-cards-deck"></div>
-                </div>
-            </div>
-
-            <!-- হিস্টোরি এবং লাইভ লগ বক্স -->
-            <div class="history-panel">
-                <div class="panel-box log-box">
-                    <h4>📜 লাইভ গেম লগ (Log History)</h4>
-                    <div class="panel-content" id="log-history-list"></div>
-                </div>
-                <div class="panel-box history-box">
-                    <h4>📊 রাউন্ডের ফলাফল (Score History)</h4>
-                    <div class="panel-content" id="score-history-list"></div>
-                </div>
-            </div>
+      <!-- ---------- Top bar: room code + mode + leave ---------- -->
+      <header class="lobby-topbar">
+        <div class="room-code-panel">
+          <span class="room-code-label">রুম কোড</span>
+          <div class="room-code-display" id="room-code-display" aria-live="polite">
+            <span class="rc-digit">৪</span><span class="rc-digit">৭</span><span class="rc-digit">২</span><span class="rc-digit">৯</span><span class="rc-digit">০</span><span class="rc-digit">৫</span>
+          </div>
+          <!-- hidden field holding the raw (Latin-digit) code for future copy-to-clipboard logic -->
+          <input type="text" id="room-code-value" class="visually-hidden-toggle" value="472905" readonly tabindex="-1" aria-hidden="true">
+          <button type="button" id="btn-copy-code" class="btn btn--ghost btn--icon">
+            <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1Zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H8V7h11v14Z" fill="currentColor"/></svg>
+            কপি করুন
+          </button>
         </div>
-    </div>
 
-    <!-- মেইন ইঞ্জিন কোড লোড -->
-    <script src="./app.js"></script>
+        <div class="lobby-topbar-meta">
+          <span class="chip chip--mode" id="lobby-mode-chip">মোড A &middot; 1 Human vs 3 Bots</span>
+          <button type="button" id="btn-leave-lobby" class="btn btn--outline">প্রস্থান</button>
+        </div>
+      </header>
+
+      <!-- ---------- Seats grid: South / East / North / West ---------- -->
+      <div class="seat-grid" id="lobby-seat-grid">
+
+        <div class="seat-card seat-card--empty" data-seat="south" id="lobby-seat-south">
+          <div class="seat-card-direction">দক্ষিণ &middot; South</div>
+          <div class="seat-avatar seat-avatar--empty" id="lobby-avatar-south">?</div>
+          <div class="seat-card-name seat-card-name--empty" id="lobby-name-south">খালি আসন</div>
+          <div class="seat-card-badge seat-card-badge--waiting" id="lobby-badge-south">অপেক্ষমান</div>
+        </div>
+
+        <div class="seat-card seat-card--empty" data-seat="east" id="lobby-seat-east">
+          <div class="seat-card-direction">পূর্ব &middot; East</div>
+          <div class="seat-avatar seat-avatar--empty" id="lobby-avatar-east">?</div>
+          <div class="seat-card-name seat-card-name--empty" id="lobby-name-east">খালি আসন</div>
+          <div class="seat-card-badge seat-card-badge--waiting" id="lobby-badge-east">অপেক্ষমান</div>
+        </div>
+
+        <div class="seat-card seat-card--empty" data-seat="north" id="lobby-seat-north">
+          <div class="seat-card-direction">উত্তর &middot; North</div>
+          <div class="seat-avatar seat-avatar--empty" id="lobby-avatar-north">?</div>
+          <div class="seat-card-name seat-card-name--empty" id="lobby-name-north">খালি আসন</div>
+          <div class="seat-card-badge seat-card-badge--waiting" id="lobby-badge-north">অপেক্ষমান</div>
+        </div>
+
+        <div class="seat-card seat-card--empty" data-seat="west" id="lobby-seat-west">
+          <div class="seat-card-direction">পশ্চিম &middot; West</div>
+          <div class="seat-avatar seat-avatar--empty" id="lobby-avatar-west">?</div>
+          <div class="seat-card-name seat-card-name--empty" id="lobby-name-west">খালি আসন</div>
+          <div class="seat-card-badge seat-card-badge--waiting" id="lobby-badge-west">অপেক্ষমান</div>
+        </div>
+
+      </div>
+
+      <p class="lobby-waiting-note" id="lobby-waiting-note">সব আসন পূরণ হওয়া মাত্র হোস্ট পার্টনারশিপ নির্ধারণ করবেন।</p>
+
+      <!-- =================================================================
+           PARTNERSHIP SETUP PANEL — visible ONLY on the host's screen,
+           and only once all 4 seats are occupied. Hidden by default here;
+           JS will remove "is-hidden" for the host once slots are full.
+           ================================================================= -->
+      <div class="partnership-panel is-hidden" id="partnership-panel">
+        <h2 class="partnership-title">পার্টনারশিপ নির্ধারণ</h2>
+        <p class="partnership-sub">শুধুমাত্র হোস্টের জন্য &middot; প্রতিটি আসনকে দল ১ অথবা দল ২-তে রাখুন</p>
+
+        <div class="partnership-rows">
+
+          <div class="partnership-row" data-seat="south">
+            <div class="partnership-row-who">
+              <span class="partnership-row-direction">দক্ষিণ</span>
+              <span class="partnership-row-name" id="partnership-name-south">—</span>
+            </div>
+            <div class="segmented" role="radiogroup" aria-label="রাহুলের দল">
+              <input type="radio" name="partner-south" id="partner-south-1" class="segmented-radio" checked>
+              <label for="partner-south-1" class="segmented-btn">দল ১</label>
+              <input type="radio" name="partner-south" id="partner-south-2" class="segmented-radio">
+              <label for="partner-south-2" class="segmented-btn">দল ২</label>
+            </div>
+          </div>
+
+          <div class="partnership-row" data-seat="east">
+            <div class="partnership-row-who">
+              <span class="partnership-row-direction">পূর্ব</span>
+              <span class="partnership-row-name" id="partnership-name-east">—</span>
+            </div>
+            <div class="segmented" role="radiogroup" aria-label="বট ১-এর দল">
+              <input type="radio" name="partner-east" id="partner-east-1" class="segmented-radio">
+              <label for="partner-east-1" class="segmented-btn">দল ১</label>
+              <input type="radio" name="partner-east" id="partner-east-2" class="segmented-radio" checked>
+              <label for="partner-east-2" class="segmented-btn">দল ২</label>
+            </div>
+          </div>
+
+          <div class="partnership-row" data-seat="north">
+            <div class="partnership-row-who">
+              <span class="partnership-row-direction">উত্তর</span>
+              <span class="partnership-row-name" id="partnership-name-north">—</span>
+            </div>
+            <div class="segmented" role="radiogroup" aria-label="বট ২-এর দল">
+              <input type="radio" name="partner-north" id="partner-north-1" class="segmented-radio" checked>
+              <label for="partner-north-1" class="segmented-btn">দল ১</label>
+              <input type="radio" name="partner-north" id="partner-north-2" class="segmented-radio">
+              <label for="partner-north-2" class="segmented-btn">দল ২</label>
+            </div>
+          </div>
+
+          <div class="partnership-row" data-seat="west">
+            <div class="partnership-row-who">
+              <span class="partnership-row-direction">পশ্চিম</span>
+              <span class="partnership-row-name" id="partnership-name-west">—</span>
+            </div>
+            <div class="segmented" role="radiogroup" aria-label="বট ৩-এর দল">
+              <input type="radio" name="partner-west" id="partner-west-1" class="segmented-radio">
+              <label for="partner-west-1" class="segmented-btn">দল ১</label>
+              <input type="radio" name="partner-west" id="partner-west-2" class="segmented-radio" checked>
+              <label for="partner-west-2" class="segmented-btn">দল ২</label>
+            </div>
+          </div>
+
+        </div>
+
+        <p class="partnership-example">উদাহরণ: দক্ষিণ ও উত্তর — দল ১ &nbsp;|&nbsp; পূর্ব ও পশ্চিম — দল ২</p>
+
+        <div class="partnership-actions">
+          <button type="button" id="btn-lock-partnerships" class="btn btn--outline btn--full">পার্টনারশিপ লক করুন</button>
+          <button type="button" id="btn-start-game" class="btn btn--brass btn--full" disabled>খেলা শুরু করুন</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- =====================================================================
+       SCREEN 3 — GAME BOARD: CIRCULAR VELVET TABLE, LOG & SCORE PANELS
+       ===================================================================== -->
+  <section id="screen-game" class="screen">
+    <div class="game-wrap">
+
+      <!-- ---------- Top bar ---------- -->
+      <header class="game-topbar">
+        <div class="game-topbar-left">
+          <span class="chip chip--room" id="room-chip-game">রুম: ------</span>
+          <span class="chip chip--round" id="round-chip">রাউন্ড ১</span>
+        </div>
+        <div class="game-topbar-center">
+          <span class="turn-indicator" id="turn-indicator">পালা: —</span>
+        </div>
+        <div class="game-topbar-right">
+          <span class="chip chip--trump" id="trump-chip">তুরুপ: --</span>
+          <button type="button" id="btn-game-menu" class="btn btn--ghost btn--icon" aria-label="মেনু">
+            <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><path d="M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Prominent transient announcement banner: redeals, forced-dealer bids,
+           bidding winner, etc. Hidden by default; app.js shows it briefly. -->
+      <div class="game-banner is-hidden" id="game-banner"></div>
+
+      <div class="game-main">
+
+        <!-- ---------- Table area ---------- -->
+        <div class="table-wrap">
+          <div class="velvet-table">
+
+            <!-- North seat -->
+            <div class="seat-marker seat-marker--north" data-seat="north" id="seat-marker-north">
+              <div class="seat-marker-fan" aria-hidden="true">
+                <span class="mini-card"></span><span class="mini-card"></span><span class="mini-card"></span>
+              </div>
+              <div class="seat-marker-info">
+                <div class="seat-avatar seat-avatar--filled seat-avatar--sm" id="marker-avatar-north">?</div>
+                <div class="seat-marker-text">
+                  <span class="seat-marker-name" id="marker-name-north">খালি আসন</span>
+                  <span class="seat-marker-count" id="marker-count-north">০ টি কার্ড</span>
+                </div>
+              </div>
+              <span class="bid-bubble is-hidden" id="bid-bubble-north">ডাক --</span>
+              <span class="dealer-chip is-hidden" id="dealer-chip-north">ডিলার</span>
+            </div>
+
+            <!-- East seat -->
+            <div class="seat-marker seat-marker--east" data-seat="east" id="seat-marker-east">
+              <div class="seat-marker-fan" aria-hidden="true">
+                <span class="mini-card"></span><span class="mini-card"></span><span class="mini-card"></span>
+              </div>
+              <div class="seat-marker-info">
+                <div class="seat-avatar seat-avatar--filled seat-avatar--sm" id="marker-avatar-east">?</div>
+                <div class="seat-marker-text">
+                  <span class="seat-marker-name" id="marker-name-east">খালি আসন</span>
+                  <span class="seat-marker-count" id="marker-count-east">০ টি কার্ড</span>
+                </div>
+              </div>
+              <span class="bid-bubble is-hidden" id="bid-bubble-east">ডাক --</span>
+              <span class="dealer-chip is-hidden" id="dealer-chip-east">ডিলার</span>
+            </div>
+
+            <!-- West seat -->
+            <div class="seat-marker seat-marker--west" data-seat="west" id="seat-marker-west">
+              <div class="seat-marker-fan" aria-hidden="true">
+                <span class="mini-card"></span><span class="mini-card"></span><span class="mini-card"></span>
+              </div>
+              <div class="seat-marker-info">
+                <div class="seat-avatar seat-avatar--filled seat-avatar--sm" id="marker-avatar-west">?</div>
+                <div class="seat-marker-text">
+                  <span class="seat-marker-name" id="marker-name-west">খালি আসন</span>
+                  <span class="seat-marker-count" id="marker-count-west">০ টি কার্ড</span>
+                </div>
+              </div>
+              <span class="bid-bubble is-hidden" id="bid-bubble-west">ডাক --</span>
+              <span class="dealer-chip is-hidden" id="dealer-chip-west">ডিলার</span>
+            </div>
+
+            <!-- South seat (the user) — hand shown in the dock below, not here -->
+            <div class="seat-marker seat-marker--south" data-seat="south" id="seat-marker-south">
+              <div class="seat-marker-info">
+                <div class="seat-avatar seat-avatar--filled seat-avatar--sm seat-avatar--you" id="marker-avatar-south">?</div>
+                <div class="seat-marker-text">
+                  <span class="seat-marker-name" id="marker-name-south">আপনি</span>
+                  <span class="seat-marker-count" id="marker-count-south">—</span>
+                </div>
+              </div>
+              <span class="bid-bubble is-hidden" id="bid-bubble-south">ডাক --</span>
+              <span class="dealer-chip is-hidden" id="dealer-chip-south">ডিলার</span>
+            </div>
+
+            <!-- Center of the table: trump badge, bid badge, trick slots -->
+            <div class="table-center">
+              <div class="trick-slot trick-slot--north" data-pos="north"></div>
+              <div class="trick-slot trick-slot--east" data-pos="east"></div>
+              <div class="trick-slot trick-slot--south" data-pos="south"></div>
+              <div class="trick-slot trick-slot--west" data-pos="west"></div>
+              <div class="table-center-badge">
+                <span class="table-center-trump">♠</span>
+                <span class="table-center-label">তুরুপ</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ---------- User's own hand dock (JS renders real cards here) ---------- -->
+        <div class="hand-dock" id="hand-dock" aria-label="আপনার হাতের তাস"></div>
+
+        <!-- =================================================================
+             BIDDING PANEL — shown during BIDDING_ROUND_1/2/3. JS toggles the
+             action buttons based on whose turn it is and whether the local
+             seat currently holds the Defender role (only Defenders may Achi;
+             the Dealer/South, when acting as Challenger, may never Pass).
+             ================================================================= -->
+        <div class="bidding-panel is-hidden" id="bidding-panel">
+          <div class="bidding-info">
+            <span class="bidding-round-label" id="bidding-round-label">রাউন্ড ১ ডাক</span>
+            <span class="bidding-current" id="bidding-current-text">ডাক শুরু হয়নি</span>
+          </div>
+
+          <div class="bidding-actions" id="bidding-actions">
+            <button type="button" id="btn-bid" class="btn btn--brass">
+              ডাক দিন <span class="btn-sub" id="btn-bid-value">১৬</span>
+            </button>
+            <button type="button" id="btn-achi" class="btn btn--outline is-hidden">আছি</button>
+            <button type="button" id="btn-pass" class="btn btn--ghost">পাস</button>
+          </div>
+
+          <p class="bidding-wait-note is-hidden" id="bidding-wait-note">অন্য খেলোয়াড়ের পালা...</p>
+        </div>
+
+        <!-- ---------- Log & Score panels ---------- -->
+        <aside class="side-panels">
+
+          <!-- CSS-only tab switch between Log and Score (mobile shows this as a bottom sheet) -->
+          <input type="radio" name="panel-tab" id="tab-log" class="visually-hidden-toggle" checked>
+          <input type="radio" name="panel-tab" id="tab-score" class="visually-hidden-toggle">
+
+          <div class="panel-tabs">
+            <label for="tab-log" class="panel-tab-btn">খেলার বিবরণ</label>
+            <label for="tab-score" class="panel-tab-btn">স্কোর ইতিহাস</label>
+          </div>
+
+          <div class="panels-body">
+
+            <!-- ---------- Log history (Bengali, real-time actions) ---------- -->
+            <div class="panel-content" id="panel-log">
+              <ul class="log-list" id="log-list"></ul>
+            </div>
+
+            <!-- ---------- Score history ---------- -->
+            <div class="panel-content" id="panel-score">
+              <table class="score-table">
+                <thead>
+                  <tr>
+                    <th>রাউন্ড</th>
+                    <th>তুরুপ</th>
+                    <th>দল ১</th>
+                    <th>দল ২</th>
+                    <th>বিজয়ী</th>
+                  </tr>
+                </thead>
+                <tbody id="score-tbody">
+                  <tr>
+                    <td colspan="5" class="score-empty-row">কোনো রাউন্ড এখনো শেষ হয়নি।</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- =====================================================================
+     FIREBASE SDKs (v8 compat build — works with the classic firebase.*
+     namespaced API, e.g. firebase.database()).
+     ===================================================================== -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+<!-- Project config must load BEFORE app.js, since app.js uses the
+     `db` / `auth` objects that firebase-config.js creates. -->
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+
 </body>
 </html>
