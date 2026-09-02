@@ -245,65 +245,13 @@
            ================================================================= -->
       <div class="partnership-panel is-hidden" id="partnership-panel">
         <h2 class="partnership-title">পার্টনারশিপ নির্ধারণ</h2>
-        <p class="partnership-sub">শুধুমাত্র হোস্টের জন্য &middot; প্রতিটি আসনকে দল ১ অথবা দল ২-তে রাখুন</p>
+        <p class="partnership-sub">শুধুমাত্র হোস্টের জন্য &middot; আপনার পার্টনার বেছে নিন — পার্টনার সবসময় আপনার বিপরীত আসনে বসবেন</p>
 
-        <div class="partnership-rows">
-
-          <div class="partnership-row" data-seat="south">
-            <div class="partnership-row-who">
-              <span class="partnership-row-direction">দক্ষিণ</span>
-              <span class="partnership-row-name" id="partnership-name-south">—</span>
-            </div>
-            <div class="segmented" role="radiogroup" aria-label="রাহুলের দল">
-              <input type="radio" name="partner-south" id="partner-south-1" class="segmented-radio" checked>
-              <label for="partner-south-1" class="segmented-btn">দল ১</label>
-              <input type="radio" name="partner-south" id="partner-south-2" class="segmented-radio">
-              <label for="partner-south-2" class="segmented-btn">দল ২</label>
-            </div>
-          </div>
-
-          <div class="partnership-row" data-seat="east">
-            <div class="partnership-row-who">
-              <span class="partnership-row-direction">পূর্ব</span>
-              <span class="partnership-row-name" id="partnership-name-east">—</span>
-            </div>
-            <div class="segmented" role="radiogroup" aria-label="বট ১-এর দল">
-              <input type="radio" name="partner-east" id="partner-east-1" class="segmented-radio">
-              <label for="partner-east-1" class="segmented-btn">দল ১</label>
-              <input type="radio" name="partner-east" id="partner-east-2" class="segmented-radio" checked>
-              <label for="partner-east-2" class="segmented-btn">দল ২</label>
-            </div>
-          </div>
-
-          <div class="partnership-row" data-seat="north">
-            <div class="partnership-row-who">
-              <span class="partnership-row-direction">উত্তর</span>
-              <span class="partnership-row-name" id="partnership-name-north">—</span>
-            </div>
-            <div class="segmented" role="radiogroup" aria-label="বট ২-এর দল">
-              <input type="radio" name="partner-north" id="partner-north-1" class="segmented-radio" checked>
-              <label for="partner-north-1" class="segmented-btn">দল ১</label>
-              <input type="radio" name="partner-north" id="partner-north-2" class="segmented-radio">
-              <label for="partner-north-2" class="segmented-btn">দল ২</label>
-            </div>
-          </div>
-
-          <div class="partnership-row" data-seat="west">
-            <div class="partnership-row-who">
-              <span class="partnership-row-direction">পশ্চিম</span>
-              <span class="partnership-row-name" id="partnership-name-west">—</span>
-            </div>
-            <div class="segmented" role="radiogroup" aria-label="বট ৩-এর দল">
-              <input type="radio" name="partner-west" id="partner-west-1" class="segmented-radio">
-              <label for="partner-west-1" class="segmented-btn">দল ১</label>
-              <input type="radio" name="partner-west" id="partner-west-2" class="segmented-radio" checked>
-              <label for="partner-west-2" class="segmented-btn">দল ২</label>
-            </div>
-          </div>
-
+        <div class="partner-choice-list" id="partner-choice-list">
+          <!-- app.js fills this with one radio card per non-host seat -->
         </div>
 
-        <p class="partnership-example">উদাহরণ: দক্ষিণ ও উত্তর — দল ১ &nbsp;|&nbsp; পূর্ব ও পশ্চিম — দল ২</p>
+        <p class="partnership-example" id="partnership-preview">দক্ষিণ + উত্তর — দল ১ &nbsp;|&nbsp; পূর্ব + পশ্চিম — দল ২</p>
 
         <div class="partnership-actions">
           <button type="button" id="btn-lock-partnerships" class="btn btn--outline btn--full">পার্টনারশিপ লক করুন</button>
