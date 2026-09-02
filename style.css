@@ -718,74 +718,46 @@ img, svg {
   margin-bottom: var(--space-4);
 }
 
-.partnership-rows {
+.partner-choice-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
-.partnership-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: rgba(6, 35, 26, 0.4);
-  border: 1px solid var(--color-panel-line);
+.partner-choice-item {
+  position: relative;
 }
 
-.partnership-row-who {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.partnership-row-direction {
-  font-family: var(--font-display);
-  font-size: 11px;
-  color: var(--color-ivory-dim);
-  letter-spacing: 0.04em;
-}
-
-.partnership-row-name {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.segmented {
-  display: flex;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--color-panel-line);
-  overflow: hidden;
-}
-
-.segmented-radio {
+.partner-choice-radio {
   position: absolute;
   opacity: 0;
   width: 1px;
   height: 1px;
 }
 
-.segmented-btn {
-  padding: 8px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-ivory-dim);
+.partner-choice-label {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-panel-line);
+  background: rgba(6, 35, 26, 0.4);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.segmented-radio:checked + .segmented-btn {
-  background: var(--color-brass);
-  color: var(--color-wood-dark);
+.partner-choice-radio:checked + .partner-choice-label {
+  border-color: var(--color-brass);
+  background: rgba(201, 162, 39, 0.12);
+  box-shadow: 0 0 0 1px var(--color-brass) inset;
+  color: var(--color-brass-light);
 }
 
-.segmented-radio:focus-visible + .segmented-btn {
+.partner-choice-radio:focus-visible + .partner-choice-label {
   outline: 2px solid var(--color-brass-light);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .partnership-example {
