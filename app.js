@@ -151,6 +151,7 @@ let nextDealerSeat = null; // used to force the next dealer (Single Play winner)
 let doubleResponses = {};
 let redoubleResponses = {};
 let singleDoubleResponses = {};
+let singlePlayWindowResponses = {};
 
 let activeListeners = [];
 let bannerTimer = null;
@@ -473,12 +474,30 @@ function detachRoomListeners() {
   activeListeners = [];
 }
 
+let lastKnownRoomStatus = null;
+
 function attachRoomListeners() {
   detachRoomListeners();
   const roomRef = db.ref('rooms/' + myRoomCode);
 
+  // Wipe any leftover UI from a previous room/session before this one's
+  // listeners start filling it back in.
+  document.getElementById('log-list').innerHTML = '';
+  document.getElementById('hand-dock').innerHTML = '';
+  lastKnownRoomStatus = null;
+
   listenOn(roomRef.child('players'), 'value', snap => { players = snap.val() || {}; reconcileMySeat(); renderEverything(); });
-  listenOn(roomRef.child('meta'), 'value', snap => { roomMeta = snap.val() || {}; renderEverything(); });
+  listenOn(roomRef.child('meta'), 'value', snap => {
+    const newMeta = snap.val() || {};
+    // A fresh "DEALING" status marks the start of a new round — clear the
+    // on-screen log so each round's story starts clean, as requested.
+    if (newMeta.status === 'DEALING' && lastKnownRoomStatus !== 'DEALING') {
+      document.getElementById('log-list').innerHTML = '';
+    }
+    lastKnownRoomStatus = newMeta.status;
+    roomMeta = newMeta;
+    renderEverything();
+  });
   listenOn(roomRef.child('partnerships'), 'value', snap => { partnerships = snap.val() || {}; renderEverything(); });
   listenOn(roomRef.child('dealer'), 'value', snap => { dealerSeat = snap.val() || 'south'; roles = computeRoles(dealerSeat); renderEverything(); });
   listenOn(roomRef.child('handCounts'), 'value', snap => { handCounts = snap.val() || {}; renderEverything(); });
@@ -538,6 +557,7 @@ function hostProcessAction(seat, type, payload) {
     case 'DOUBLE_CHOICE': hostHandleDoubleChoice(seat, payload && payload.choice); break;
     case 'REDOUBLE_CHOICE': hostHandleRedoubleChoice(seat, payload && payload.choice); break;
     case 'SINGLE_REQUEST': hostHandleSingleRequest(seat); break;
+    case 'SINGLE_SKIP': hostHandleSingleSkip(seat); break;
     case 'SINGLE_DOUBLE_CHOICE': hostHandleSingleDoubleChoice(seat, payload && payload.choice); break;
     case 'PLAY_CARD': hostHandlePlayCard(seat, payload); break;
     case 'TRUMP_REVEAL_CHOICE': hostHandleTrumpRevealChoice(seat, payload && payload.choice); break;
@@ -950,7 +970,7 @@ function resetRoundState() {
   bidding = null; trump = null; doubleState = null; singlePlay = null;
   singlePlayQueueLocal = []; trick = null; tricksWon = {}; teamPoints = { 1: 0, 2: 0 };
   pairDeclared = null; currentTurnSeat = null; pendingSecondHands = {}; pointMultiplier = 1; trickNumber = 1;
-  doubleResponses = {}; redoubleResponses = {}; singleDoubleResponses = {};
+  doubleResponses = {}; redoubleResponses = {}; singleDoubleResponses = {}; singlePlayWindowResponses = {};
 
   const code = myRoomCode;
   db.ref(`rooms/${code}/bidding`).set(null);
@@ -976,21 +996,44 @@ function resetRoundState() {
 function startSinglePlayWindow() {
   setRoomStatus('SINGLE_PLAY_WINDOW');
   singlePlayQueueLocal = [];
+  singlePlayWindowResponses = {};
   db.ref(`rooms/${myRoomCode}/singlePlayQueue`).set([]);
+  // Bots never request Single Play (per the earlier design note) — record
+  // their "skip" immediately so the window doesn't wait on them forever.
+  SEATS.forEach(seat => {
+    if (players[seat] && players[seat].isBot) singlePlayWindowResponses[seat] = 'SKIP';
+  });
   if (singlePlayWindowTimer) clearTimeout(singlePlayWindowTimer);
-  singlePlayWindowTimer = setTimeout(() => finalizeSinglePlayWindow(), 6000);
+  // Safety-net only, in case a human's browser never responds (e.g. they
+  // closed the tab) — everyone still gets a real chance to answer first.
+  singlePlayWindowTimer = setTimeout(() => finalizeSinglePlayWindow(), 30000);
+  maybeFinalizeSinglePlayWindow();
+}
+
+function maybeFinalizeSinglePlayWindow() {
+  if (SEATS.every(s => singlePlayWindowResponses[s])) finalizeSinglePlayWindow();
 }
 
 function hostHandleSingleRequest(seat) {
   if (!isHost || !roomMeta || roomMeta.status !== 'SINGLE_PLAY_WINDOW') return;
-  if (singlePlayQueueLocal.includes(seat)) return;
+  if (singlePlayWindowResponses[seat]) return; // already answered
+  singlePlayWindowResponses[seat] = 'REQUEST';
   singlePlayQueueLocal.push(seat);
   db.ref(`rooms/${myRoomCode}/singlePlayQueue`).set(singlePlayQueueLocal);
   pushLog(`${seatLabel(seat)} সিঙ্গেল খেলার আবেদন করেছেন।`);
+  maybeFinalizeSinglePlayWindow();
+}
+
+function hostHandleSingleSkip(seat) {
+  if (!isHost || !roomMeta || roomMeta.status !== 'SINGLE_PLAY_WINDOW') return;
+  if (singlePlayWindowResponses[seat]) return; // already answered
+  singlePlayWindowResponses[seat] = 'SKIP';
+  maybeFinalizeSinglePlayWindow();
 }
 
 function finalizeSinglePlayWindow() {
   if (!isHost || !roomMeta || roomMeta.status !== 'SINGLE_PLAY_WINDOW') return;
+  if (singlePlayWindowTimer) { clearTimeout(singlePlayWindowTimer); singlePlayWindowTimer = null; }
   if (singlePlayQueueLocal.length === 0) { startNormalPlay(); return; }
   trySingleForNextInQueue();
 }
@@ -1650,10 +1693,12 @@ function renderMyHand() {
   dock.innerHTML = '';
   (myHand || []).forEach(card => {
     const playable = isCardPlayable(card);
+    const isLockedHidden = card.locked && !(trump && trump.revealed);
     const div = document.createElement('div');
-    div.className = 'hand-card' + (playable ? ' is-playable' : '') +
-      ((!playable && roomMeta && roomMeta.status === 'PLAYING' && mySeat === currentTurnSeat) ? ' is-disabled' : '');
-    div.innerHTML = `<span class="hand-card-rank">${card.rank}</span><span class="hand-card-suit ${SUIT_CLASS[card.suit]}">${SUIT_SYMBOL[card.suit]}</span>`;
+    div.className = 'hand-card' + (playable ? ' is-playable' : '') + (isLockedHidden ? ' hand-card--locked' : '') +
+      ((!playable && !isLockedHidden && roomMeta && roomMeta.status === 'PLAYING' && mySeat === currentTurnSeat) ? ' is-disabled' : '');
+    div.innerHTML = `<span class="hand-card-rank">${card.rank}</span><span class="hand-card-suit ${SUIT_CLASS[card.suit]}">${SUIT_SYMBOL[card.suit]}</span>` +
+      (isLockedHidden ? '<span class="hand-card-lock" title="ট্রাম্প উন্মোচিত না হওয়া পর্যন্ত এই তাসটি খেলা যাবে না">🔒</span>' : '');
     if (playable) div.addEventListener('click', () => submitAction('PLAY_CARD', { suit: card.suit, rank: card.rank }));
     dock.appendChild(div);
   });
@@ -1722,9 +1767,9 @@ function appendLogEntry(entry) {
   time.textContent = formatBnTime(entry.ts);
   li.appendChild(time);
   li.appendChild(document.createTextNode(' ' + entry.text));
-  list.appendChild(li);
+  list.insertBefore(li, list.firstChild); // newest entries at the top, oldest at the bottom
   const body = document.getElementById('panel-log');
-  body.scrollTop = body.scrollHeight;
+  body.scrollTop = 0;
 }
 
 function showBanner(message, duration) {
@@ -1816,12 +1861,11 @@ function renderPhaseUI() {
   }
 
   if (status === 'SINGLE_PLAY_WINDOW') {
-    const already = singlePlayQueueLocal && singlePlayQueueLocal.includes(mySeat);
     const isBotSeat = players[mySeat] && players[mySeat].isBot;
-    if (!already && !isBotSeat) {
+    if (!isBotSeat) {
       showModal('সিঙ্গেল খেলবেন?', 'একাই পুরো রাউন্ড খেলতে চান?', [
         modalButton('সিঙ্গেল খেলুন', 'btn--brass', () => submitAction('SINGLE_REQUEST')),
-        modalButton('স্কিপ', 'btn--outline', null)
+        modalButton('স্কিপ', 'btn--outline', () => submitAction('SINGLE_SKIP'))
       ]);
     } else hideModal();
     document.getElementById('play-actions').classList.add('is-hidden');
