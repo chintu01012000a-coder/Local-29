@@ -760,6 +760,11 @@ img, svg {
   outline-offset: 2px;
 }
 
+.partnership-panel--readonly .partner-choice-label {
+  cursor: default;
+  pointer-events: none;
+}
+
 .partnership-example {
   font-size: 12px;
   color: var(--color-ivory-dim);
@@ -833,12 +838,12 @@ img, svg {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: var(--space-3) 0;
+  padding: var(--space-3) 64px;
 }
 
 .velvet-table {
   position: relative;
-  width: min(92vw, 460px);
+  width: min(calc(100vw - 128px), 460px);
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   background:
@@ -1425,6 +1430,8 @@ img, svg {
   .entry-card { padding: var(--space-5) var(--space-3); }
   .mode-card-title { font-size: 13px; }
   .hand-card { width: 44px; height: 64px; margin-left: -16px; }
+  .table-wrap { padding: var(--space-3) 56px; }
+  .velvet-table { width: min(calc(100vw - 112px), 460px); }
 }
 
 /* ---- Tablet and up: seats grid becomes 4 across, table grows ---- */
