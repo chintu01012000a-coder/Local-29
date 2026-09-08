@@ -1277,6 +1277,29 @@ img, svg {
   cursor: not-allowed;
 }
 
+.hand-card--locked {
+  position: relative;
+  opacity: 0.7;
+  border-style: dashed;
+  border-color: var(--color-maroon-light);
+  cursor: not-allowed;
+}
+
+.hand-card-lock {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 12px;
+  background: var(--color-maroon);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
 
 /* ---------- Log / score side panels ---------- */
 
@@ -1288,6 +1311,7 @@ img, svg {
   display: flex;
   flex-direction: column;
   max-height: 260px;
+  min-height: 0;
 }
 
 .panel-tabs {
@@ -1316,6 +1340,7 @@ img, svg {
 .panels-body {
   position: relative;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -1434,7 +1459,8 @@ img, svg {
   .side-panels {
     grid-column: 2;
     grid-row: 1 / span 2;
-    max-height: none;
+    max-height: 640px;
+    min-height: 0;
     align-self: stretch;
   }
 
