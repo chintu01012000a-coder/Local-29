@@ -175,6 +175,9 @@ function formatBnTime(ts) {
   return toBengaliDigits(h + ':' + m);
 }
 function seatLabel(seat) { return SEAT_LABELS_BN[seat] || seat; }
+// Prefer the actual player's name in log/score text; falls back to the
+// compass position only if a name isn't known yet (e.g. an empty seat).
+function playerName(seat) { return (players[seat] && players[seat].name) || seatLabel(seat); }
 function clampBid(value, min, max) {
   let v = parseInt(value, 10);
   if (isNaN(v)) v = min;
@@ -395,7 +398,7 @@ async function handleJoinGame() {
     mySeat = openSeat; isHost = false; myRoomCode = code; myName = name;
     saveSession();
     attachRoomListeners();
-    await pushLog(`${name} (${seatLabel(openSeat)}) টেবিলে যোগ দিয়েছেন।`);
+    await pushLog(`${name} (${playerName(openSeat)}) টেবিলে যোগ দিয়েছেন।`);
     showScreen('screen-lobby');
   } catch (err) {
     console.error(err);
@@ -651,17 +654,17 @@ function initBiddingRound1() {
   bidding = { round: 1, defenderSeat: roles.p1, challengerSeat: roles.p2, currentBid: 0, locked: false, turnSeat: roles.p1, biddingClosed: false, finalWinner: null, finalBid: null };
   writeBidding();
   setRoomStatus('BIDDING_ROUND_1');
-  pushLog(`ডাকের পালা শুরু: ${seatLabel(roles.p1)} বনাম ${seatLabel(roles.p2)} (সর্বনিম্ন ডাক ১৬)।`);
+  pushLog(`ডাকের পালা শুরু: ${playerName(roles.p1)} বনাম ${playerName(roles.p2)} (সর্বনিম্ন ডাক ১৬)।`);
   maybeTriggerBotBid();
 }
 
 function startRound2(carrySeat, carryBid) {
   if (carrySeat) {
     bidding = { round: 2, defenderSeat: carrySeat, challengerSeat: roles.p3, currentBid: carryBid, locked: true, turnSeat: roles.p3, biddingClosed: false, finalWinner: null, finalBid: null };
-    pushLog(`রাউন্ড ২: ${seatLabel(carrySeat)} (ডাক ${bnNum(carryBid)}) বনাম ${seatLabel(roles.p3)}।`);
+    pushLog(`রাউন্ড ২: ${playerName(carrySeat)} (ডাক ${bnNum(carryBid)}) বনাম ${playerName(roles.p3)}।`);
   } else {
     bidding = { round: 2, defenderSeat: roles.p2, challengerSeat: roles.p3, currentBid: 0, locked: false, turnSeat: roles.p2, biddingClosed: false, finalWinner: null, finalBid: null };
-    pushLog(`রাউন্ড ২: ${seatLabel(roles.p2)} বনাম ${seatLabel(roles.p3)} (সর্বনিম্ন ডাক ১৬)।`);
+    pushLog(`রাউন্ড ২: ${playerName(roles.p2)} বনাম ${playerName(roles.p3)} (সর্বনিম্ন ডাক ১৬)।`);
   }
   setRoomStatus('BIDDING_ROUND_2');
   writeBidding();
@@ -671,10 +674,10 @@ function startRound2(carrySeat, carryBid) {
 function startRound3(carrySeat, carryBid) {
   if (carrySeat) {
     bidding = { round: 3, defenderSeat: carrySeat, challengerSeat: roles.dealer, currentBid: carryBid, locked: true, turnSeat: roles.dealer, biddingClosed: false, finalWinner: null, finalBid: null };
-    pushLog(`রাউন্ড ৩: ${seatLabel(carrySeat)} (ডাক ${bnNum(carryBid)}) বনাম ডিলার।`);
+    pushLog(`রাউন্ড ৩: ${playerName(carrySeat)} (ডাক ${bnNum(carryBid)}) বনাম ডিলার।`);
   } else {
     bidding = { round: 3, defenderSeat: roles.p3, challengerSeat: roles.dealer, currentBid: 0, locked: false, turnSeat: roles.p3, biddingClosed: false, finalWinner: null, finalBid: null };
-    pushLog(`রাউন্ড ৩: ${seatLabel(roles.p3)} বনাম ডিলার (সর্বনিম্ন ডাক ১৬)।`);
+    pushLog(`রাউন্ড ৩: ${playerName(roles.p3)} বনাম ডিলার (সর্বনিম্ন ডাক ১৬)।`);
   }
   setRoomStatus('BIDDING_ROUND_3');
   writeBidding();
@@ -694,11 +697,11 @@ function hostHandleBidAction(seat, action, value) {
   const isDefenderTurn = seat === bidding.defenderSeat;
 
   if (isDefenderTurn && !bidding.locked) {
-    if (action === 'PASS') { pushLog(`${seatLabel(seat)} ডাক না দিয়ে পাস করলেন।`); resolveRoundEnd(round, null, null); return; }
+    if (action === 'PASS') { pushLog(`${playerName(seat)} ডাক না দিয়ে পাস করলেন।`); resolveRoundEnd(round, null, null); return; }
     if (action === 'BID') {
       bidding.currentBid = clampBid(value, 16, 28);
       bidding.locked = true;
-      pushLog(`${seatLabel(seat)} ডাক দিলেন ${bnNum(bidding.currentBid)}।`);
+      pushLog(`${playerName(seat)} ডাক দিলেন ${bnNum(bidding.currentBid)}।`);
       advanceTurnToChallenger();
       return;
     }
@@ -707,7 +710,7 @@ function hostHandleBidAction(seat, action, value) {
 
   if (!isDefenderTurn) {
     if (action === 'PASS') {
-      pushLog(`${seatLabel(seat)} পাস করলেন। ${seatLabel(bidding.defenderSeat)} ${bnNum(bidding.currentBid)} ডাকে জয়ী।`);
+      pushLog(`${playerName(seat)} পাস করলেন। ${playerName(bidding.defenderSeat)} ${bnNum(bidding.currentBid)} ডাকে জয়ী।`);
       resolveRoundEnd(round, bidding.defenderSeat, bidding.currentBid);
       return;
     }
@@ -715,7 +718,7 @@ function hostHandleBidAction(seat, action, value) {
       if (bidding.currentBid >= 28) return; // no legal raise left — must Pass instead
       bidding.currentBid = clampBid(value, bidding.currentBid + 1, 28);
       bidding.turnSeat = bidding.defenderSeat;
-      pushLog(`${seatLabel(seat)} ডাক বাড়ালেন ${bnNum(bidding.currentBid)}।`);
+      pushLog(`${playerName(seat)} ডাক বাড়ালেন ${bnNum(bidding.currentBid)}।`);
       writeBidding();
       maybeTriggerBotBid();
       return;
@@ -725,20 +728,20 @@ function hostHandleBidAction(seat, action, value) {
 
   // Defender's turn inside an active duel
   if (action === 'PASS') {
-    pushLog(`${seatLabel(seat)} পাস করলেন। ${seatLabel(bidding.challengerSeat)} ${bnNum(bidding.currentBid)} ডাকে জয়ী।`);
+    pushLog(`${playerName(seat)} পাস করলেন। ${playerName(bidding.challengerSeat)} ${bnNum(bidding.currentBid)} ডাকে জয়ী।`);
     resolveRoundEnd(round, bidding.challengerSeat, bidding.currentBid);
     return;
   }
   if (action === 'ACHI') {
-    if (bidding.currentBid === 28) { pushLog(`${seatLabel(seat)} আছি বললেন ২৮-এ! বিশেষ নিয়মে সরাসরি জয়ী।`); finalizeBidding(seat, 28, true, false); return; }
-    pushLog(`${seatLabel(seat)} আছি বললেন, ডাক থাকলো ${bnNum(bidding.currentBid)}।`);
+    if (bidding.currentBid === 28) { pushLog(`${playerName(seat)} আছি বললেন ২৮-এ! বিশেষ নিয়মে সরাসরি জয়ী।`); finalizeBidding(seat, 28, true, false); return; }
+    pushLog(`${playerName(seat)} আছি বললেন, ডাক থাকলো ${bnNum(bidding.currentBid)}।`);
     advanceTurnToChallenger();
     return;
   }
   if (action === 'BID') {
     if (bidding.currentBid >= 28) return;
     bidding.currentBid = clampBid(value, bidding.currentBid + 1, 28);
-    pushLog(`${seatLabel(seat)} ডাক বাড়ালেন ${bnNum(bidding.currentBid)}।`);
+    pushLog(`${playerName(seat)} ডাক বাড়ালেন ${bnNum(bidding.currentBid)}।`);
     advanceTurnToChallenger();
     return;
   }
@@ -763,8 +766,8 @@ function finalizeBidding(winnerSeat, bidAmount) {
   writeBidding();
   setRoomStatus('BIDDING_COMPLETE');
   setBidWinner(winnerSeat, bidAmount);
-  showBanner(`ডাক শেষ! ${seatLabel(winnerSeat)} সর্বোচ্চ ${bnNum(bidAmount)} ডাকে জয়ী হলেন।`, 4000);
-  pushLog(`ডাক শেষ হয়েছে। ${seatLabel(winnerSeat)} সর্বোচ্চ ${bnNum(bidAmount)} ডাকে জয়ী।`);
+  showBanner(`ডাক শেষ! ${playerName(winnerSeat)} সর্বোচ্চ ${bnNum(bidAmount)} ডাকে জয়ী হলেন।`, 4000);
+  pushLog(`ডাক শেষ হয়েছে। ${playerName(winnerSeat)} সর্বোচ্চ ${bnNum(bidAmount)} ডাকে জয়ী।`);
   startTrumpSelection(winnerSeat);
 }
 
@@ -832,10 +835,10 @@ function hostHandleTrumpChoice(seat, value) {
     latestHands[seat] = (latestHands[seat] || []).concat([thirdCard]);
     db.ref(`rooms/${myRoomCode}/hands/${seat}`).set(latestHands[seat]);
     db.ref(`rooms/${myRoomCode}/handCounts/${seat}`).set(latestHands[seat].length);
-    pushLog(`${seatLabel(seat)} দ্বিতীয় অপশনে ট্রাম্প সেট করেছেন। (রঙ গোপন)`);
+    pushLog(`${playerName(seat)} দ্বিতীয় অপশনে ট্রাম্প সেট করেছেন। (রঙ গোপন)`);
   } else {
     trump = { suit: value, revealed: false, method: 'DIRECT' };
-    pushLog(`${seatLabel(seat)} ট্রাম্প কালার সেট করেছেন।`);
+    pushLog(`${playerName(seat)} ট্রাম্প কালার সেট করেছেন।`);
   }
   db.ref(`rooms/${myRoomCode}/trump`).set(trump);
   startDoubleWindow();
@@ -864,12 +867,12 @@ function hostHandleDoubleChoice(seat, choice) {
   if (choice === 'DOUBLE') {
     pointMultiplier = 2;
     db.ref(`rooms/${myRoomCode}/meta/pointMultiplier`).set(2);
-    pushLog(`${seatLabel(seat)} গেম ডবল করেছেন!`);
+    pushLog(`${playerName(seat)} গেম ডবল করেছেন!`);
     startRedoubleWindow();
     return;
   }
 
-  pushLog(`${seatLabel(seat)} ডবল স্কিপ করলেন।`);
+  pushLog(`${playerName(seat)} ডবল স্কিপ করলেন।`);
   const opps = SEATS.filter(s => partnerships[s] !== partnerships[roomMeta.bidWinnerSeat]);
   if (opps.every(s => doubleResponses[s])) {
     pushLog('উভয় প্রতিপক্ষ ডবল স্কিপ করেছেন। খেলা স্বাভাবিক থাকবে।');
@@ -893,12 +896,12 @@ function hostHandleRedoubleChoice(seat, choice) {
   if (choice === 'REDOUBLE') {
     pointMultiplier = 4;
     db.ref(`rooms/${myRoomCode}/meta/pointMultiplier`).set(4);
-    pushLog(`${seatLabel(seat)} রি-ডাবল করেছেন!`);
+    pushLog(`${playerName(seat)} রি-ডাবল করেছেন!`);
     proceedToSecondDeal();
     return;
   }
 
-  pushLog(`${seatLabel(seat)} রি-ডাবল স্কিপ করলেন।`);
+  pushLog(`${playerName(seat)} রি-ডাবল স্কিপ করলেন।`);
   const teamSeats = SEATS.filter(s => partnerships[s] === partnerships[roomMeta.bidWinnerSeat]);
   if (teamSeats.every(s => redoubleResponses[s])) {
     pushLog('উভয়েই রি-ডাবল স্কিপ করেছেন। ডাবল বহাল থাকবে।');
@@ -1020,7 +1023,7 @@ function hostHandleSingleRequest(seat) {
   singlePlayWindowResponses[seat] = 'REQUEST';
   singlePlayQueueLocal.push(seat);
   db.ref(`rooms/${myRoomCode}/singlePlayQueue`).set(singlePlayQueueLocal);
-  pushLog(`${seatLabel(seat)} সিঙ্গেল খেলার আবেদন করেছেন।`);
+  pushLog(`${playerName(seat)} সিঙ্গেল খেলার আবেদন করেছেন।`);
   maybeFinalizeSinglePlayWindow();
 }
 
@@ -1057,7 +1060,7 @@ function startSinglePlayFor(seat) {
   db.ref(`rooms/${myRoomCode}/singlePlay`).set(singlePlay);
   setRoomStatus('SINGLE_PLAY_DOUBLE_WINDOW');
   singleDoubleResponses = {};
-  pushLog(`${seatLabel(seat)} সিঙ্গেল খেলা শুরু করলেন!`);
+  pushLog(`${playerName(seat)} সিঙ্গেল খেলা শুরু করলেন!`);
   const opps = SEATS.filter(s => partnerships[s] !== partnerships[seat]);
   opps.forEach(s => { if (players[s] && players[s].isBot) setTimeout(() => botSingleDoubleDecision(s), 1000); });
 }
@@ -1071,12 +1074,12 @@ function hostHandleSingleDoubleChoice(seat, choice) {
   if (choice === 'DOUBLE') {
     singlePlay.opponentDoubled = true;
     db.ref(`rooms/${myRoomCode}/singlePlay`).set(singlePlay);
-    pushLog(`${seatLabel(seat)} সিঙ্গেল ডবল করেছেন! (৬ পয়েন্ট)`);
+    pushLog(`${playerName(seat)} সিঙ্গেল ডবল করেছেন! (৬ পয়েন্ট)`);
     beginTrickPlay();
     return;
   }
 
-  pushLog(`${seatLabel(seat)} সিঙ্গেল ডবল স্কিপ করলেন।`);
+  pushLog(`${playerName(seat)} সিঙ্গেল ডবল স্কিপ করলেন।`);
   const opps = SEATS.filter(s => partnerships[s] !== partnerships[singlePlay.seat]);
   if (opps.every(s => singleDoubleResponses[s])) {
     pushLog('উভয় প্রতিপক্ষ স্কিপ করেছেন। (৩ পয়েন্ট)');
@@ -1184,7 +1187,7 @@ function hostHandlePlayCard(seat, cardKey) {
   db.ref(`rooms/${myRoomCode}/hands/${seat}`).set(latestHands[seat]);
   db.ref(`rooms/${myRoomCode}/handCounts/${seat}`).set(latestHands[seat].length);
   db.ref(`rooms/${myRoomCode}/trick`).set(trick);
-  pushLog(`${seatLabel(seat)} খেললেন ${card.rank}${SUIT_SYMBOL[card.suit]}।`);
+  pushLog(`${playerName(seat)} খেললেন ${card.rank}${SUIT_SYMBOL[card.suit]}।`);
 
   const requiredSeats = (singlePlay && singlePlay.active) ? SEATS.filter(s => s !== singlePlay.partnerSeat) : SEATS;
   if (Object.keys(trick.cardsPlayed).length >= requiredSeats.length) {
@@ -1223,8 +1226,8 @@ function resolveTrick() {
 
   db.ref(`rooms/${myRoomCode}/tricksWon`).set(tricksWon);
   db.ref(`rooms/${myRoomCode}/teamPoints`).set(teamPoints);
-  pushLog(`${seatLabel(winnerSeat)} এই দান জিতলেন (${bnNum(points)} পয়েন্ট)।`);
-  showBanner(`${seatLabel(winnerSeat)} দান জিতলেন!`, 1500);
+  pushLog(`${playerName(winnerSeat)} এই দান জিতলেন (${bnNum(points)} পয়েন্ট)।`);
+  showBanner(`${playerName(winnerSeat)} দান জিতলেন!`, 1500);
 
   trickNumber++;
   if (trickNumber > 8) { finishRound(); return; }
@@ -1242,7 +1245,7 @@ function hostHandleTrumpRevealChoice(seat, choice) {
     trick.trumpForcedSeat = seat;
     db.ref(`rooms/${myRoomCode}/trump`).set(trump);
     db.ref(`rooms/${myRoomCode}/trick`).set(trick);
-    pushLog(`${seatLabel(seat)} ট্রাম্প ডাকলেন! ট্রাম্প উন্মোচিত হলো।`);
+    pushLog(`${playerName(seat)} ট্রাম্প ডাকলেন! ট্রাম্প উন্মোচিত হলো।`);
     showBanner(`ট্রাম্প উন্মোচিত: ${SUIT_SYMBOL[trump.suit]}`, 3000);
   }
 }
@@ -1258,8 +1261,8 @@ function hostHandleDeclarePair(seat) {
 
   pairDeclared = { seat, suit: trump.suit, byBidWinnerTeam: partnerships[seat] === partnerships[roomMeta.bidWinnerSeat] };
   db.ref(`rooms/${myRoomCode}/pairDeclared`).set(pairDeclared);
-  pushLog(`${seatLabel(seat)} কিং-কুইন জোড়া ঘোষণা করলেন! (৪ পয়েন্ট প্রভাব)`);
-  showBanner(`${seatLabel(seat)} জোড়া ঘোষণা করলেন!`, 3000);
+  pushLog(`${playerName(seat)} কিং-কুইন জোড়া ঘোষণা করলেন! (৪ পয়েন্ট প্রভাব)`);
+  showBanner(`${playerName(seat)} জোড়া ঘোষণা করলেন!`, 3000);
 }
 
 
@@ -1341,8 +1344,8 @@ function applyTeamScoreChange(team, delta) {
 
 function saveRoundToScoreHistory(winningTeam, delta) {
   const roundId = 'r' + Date.now();
-  const t1 = SEATS.filter(s => partnerships[s] === 1).map(s => (players[s] && players[s].name) || seatLabel(s)).join(' ও ');
-  const t2 = SEATS.filter(s => partnerships[s] === 2).map(s => (players[s] && players[s].name) || seatLabel(s)).join(' ও ');
+  const t1 = SEATS.filter(s => partnerships[s] === 1).map(playerName).join(' ও ');
+  const t2 = SEATS.filter(s => partnerships[s] === 2).map(playerName).join(' ও ');
   db.ref(`rooms/${myRoomCode}/scoreHistory/${roundId}`).set({
     round: roomMeta.round || 1,
     trump: trump ? SUIT_SYMBOL[trump.suit] : '--',
@@ -1375,11 +1378,11 @@ function finishRound() {
     delta = singlePlay.opponentDoubled ? 6 : 3;
     if (singleWon) {
       winningTeam = singleTeam; losingTeam = oppTeam;
-      pushLog(`${seatLabel(singleSeat)} সিঙ্গেলে সবকটি দান জিতে খেলা জিতলেন!`);
+      pushLog(`${playerName(singleSeat)} সিঙ্গেলে সবকটি দান জিতে খেলা জিতলেন!`);
       nextDealerSeat = singleSeat;
     } else {
       winningTeam = oppTeam; losingTeam = singleTeam;
-      pushLog(`${seatLabel(singleSeat)} সিঙ্গেলে সব দান জিততে পারেননি। প্রতিপক্ষ জয়ী!`);
+      pushLog(`${playerName(singleSeat)} সিঙ্গেলে সব দান জিততে পারেননি। প্রতিপক্ষ জয়ী!`);
     }
   } else {
     const bidTeam = partnerships[roomMeta.bidWinnerSeat];
@@ -1422,7 +1425,7 @@ function rotateDealerAndStartNextRound() {
   db.ref(`rooms/${myRoomCode}/meta/round`).set((roomMeta.round || 1) + 1);
   resetRoundState();
   setRoomStatus('DEALING');
-  pushLog(`পরবর্তী রাউন্ড শুরু হচ্ছে। নতুন ডিলার: ${seatLabel(dealerSeat)}।`);
+  pushLog(`পরবর্তী রাউন্ড শুরু হচ্ছে। নতুন ডিলার: ${playerName(dealerSeat)}।`);
   dealAndCheckCancellation();
 }
 
@@ -1478,10 +1481,23 @@ function renderLobbySeats() {
   const allFilled = SEATS.every(seat => players[seat] && players[seat].role !== 'OPEN');
   const note = document.getElementById('lobby-waiting-note');
   const panel = document.getElementById('partnership-panel');
-  if (isHost && allFilled) { panel.classList.remove('is-hidden'); note.classList.add('is-hidden'); }
-  else {
-    panel.classList.add('is-hidden'); note.classList.remove('is-hidden');
-    note.textContent = allFilled ? 'হোস্ট পার্টনারশিপ নির্ধারণ করছেন...' : 'সব আসন পূরণ হওয়ার অপেক্ষায়...';
+  const lockBtn = document.getElementById('btn-lock-partnerships');
+  const subEl = document.getElementById('partnership-sub');
+
+  if (allFilled) {
+    panel.classList.remove('is-hidden');
+    note.classList.add('is-hidden');
+    panel.classList.toggle('partnership-panel--readonly', !isHost);
+    if (lockBtn) lockBtn.classList.toggle('is-hidden', !isHost);
+    if (subEl) {
+      subEl.textContent = isHost
+        ? 'শুধুমাত্র হোস্টের জন্য · আপনার পার্টনার বেছে নিন — পার্টনার সবসময় আপনার বিপরীত আসনে বসবেন'
+        : 'হোস্ট পার্টনার নির্বাচন করছেন — আপনি শুধু দেখতে পারবেন';
+    }
+  } else {
+    panel.classList.add('is-hidden');
+    note.classList.remove('is-hidden');
+    note.textContent = 'সব আসন পূরণ হওয়ার অপেক্ষায়...';
   }
 }
 
@@ -1542,7 +1558,7 @@ function lockPartnerships() {
     .then(() => {
       roomMeta.partnershipsLocked = true;
       partnerships = partnershipMap;
-      return pushLog(`হোস্ট পার্টনারশিপ লক করেছেন: ${seatLabel('south')} + ${seatLabel('north')} বনাম ${seatLabel('east')} + ${seatLabel('west')}।`);
+      return pushLog(`হোস্ট পার্টনারশিপ লক করেছেন: ${playerName('south')} + ${playerName('north')} বনাম ${playerName('east')} + ${playerName('west')}।`);
     })
     .catch(err => { console.error(err); alert('পার্টনারশিপ লক করা যায়নি। আবার চেষ্টা করুন।'); });
 }
@@ -1612,7 +1628,7 @@ function renderBiddingUI() {
   if (bidding.biddingClosed) {
     panel.classList.add('is-hidden');
     document.getElementById('turn-indicator').textContent = bidding.finalWinner
-      ? `ডাক বিজয়ী: ${seatLabel(bidding.finalWinner)} (${bnNum(bidding.finalBid)})` : 'পালা: —';
+      ? `ডাক বিজয়ী: ${playerName(bidding.finalWinner)} (${bnNum(bidding.finalBid)})` : 'পালা: —';
     if (bidding.finalWinner) showBidBadge(bidding.finalWinner, bidding.finalBid);
     return;
   }
@@ -1620,8 +1636,8 @@ function renderBiddingUI() {
   panel.classList.remove('is-hidden');
   document.getElementById('bidding-round-label').textContent = 'রাউন্ড ' + bnNum(bidding.round) + ' ডাক';
   document.getElementById('bidding-current-text').textContent = bidding.locked
-    ? `সর্বোচ্চ ডাক: ${bnNum(bidding.currentBid)} (${seatLabel(bidding.defenderSeat)})` : 'ডাক শুরু হয়নি';
-  document.getElementById('turn-indicator').textContent = 'পালা: ' + seatLabel(bidding.turnSeat);
+    ? `সর্বোচ্চ ডাক: ${bnNum(bidding.currentBid)} (${playerName(bidding.defenderSeat)})` : 'ডাক শুরু হয়নি';
+  document.getElementById('turn-indicator').textContent = 'পালা: ' + playerName(bidding.turnSeat);
   if (bidding.locked) showBidBadge(bidding.defenderSeat, bidding.currentBid);
 
   const myTurn = mySeat === bidding.turnSeat;
@@ -1638,7 +1654,7 @@ function renderBiddingUI() {
     document.getElementById('btn-bid').classList.toggle('is-hidden', !canBid);
   } else {
     actionsEl.classList.add('is-hidden'); waitEl.classList.remove('is-hidden');
-    waitEl.textContent = seatLabel(bidding.turnSeat) + '-এর পালা...';
+    waitEl.textContent = playerName(bidding.turnSeat) + '-এর পালা...';
   }
 }
 
@@ -1736,7 +1752,7 @@ function renderPlayActionsBar() {
 function renderTeamScoresLive() {
   [1, 2].forEach(team => {
     const seats = SEATS.filter(s => partnerships[s] === team);
-    const names = seats.map(s => (players[s] && players[s].name) || seatLabel(s)).join(' ও ');
+    const names = seats.map(playerName).join(' ও ');
     const t = teamScores[team] || { points: 0, sets: 0 };
     document.getElementById('scoreboard-names-' + team).textContent = names || ('দল ' + bnNum(team));
     document.getElementById('scoreboard-score-' + team).textContent = `${bnNum(t.sets)} সেট ♥️${bnNum(t.points)}`;
@@ -1874,7 +1890,7 @@ function renderPhaseUI() {
 
   if (status === 'SINGLE_PLAY_DOUBLE_WINDOW') {
     if (singlePlay && partnerships[mySeat] !== partnerships[singlePlay.seat]) {
-      showModal('সিঙ্গেল ডবল করবেন?', `${seatLabel(singlePlay.seat)} সিঙ্গেল খেলছেন।`, [
+      showModal('সিঙ্গেল ডবল করবেন?', `${playerName(singlePlay.seat)} সিঙ্গেল খেলছেন।`, [
         modalButton('ডবল (৬ পয়েন্ট)', 'btn--brass', () => submitAction('SINGLE_DOUBLE_CHOICE', { choice: 'DOUBLE' })),
         modalButton('স্কিপ (৩ পয়েন্ট)', 'btn--outline', () => submitAction('SINGLE_DOUBLE_CHOICE', { choice: 'SKIP' }))
       ]);
