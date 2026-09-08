@@ -145,6 +145,13 @@ let pairDeclared = null;   // { seat, suit, byBidWinnerTeam }
 let currentTurnSeat = null;
 let nextDealerSeat = null; // used to force the next dealer (Single Play winner)
 
+// Tracks each side's responses in the Double / Redouble / Single-Double
+// windows: either player saying YES triggers it immediately, but a SKIP
+// only finalizes "no action" once BOTH players on that side have skipped.
+let doubleResponses = {};
+let redoubleResponses = {};
+let singleDoubleResponses = {};
+
 let activeListeners = [];
 let bannerTimer = null;
 let singlePlayWindowTimer = null;
@@ -758,7 +765,7 @@ function runBotBidTurn(seat) {
   const isDefTurn = seat === bidding.defenderSeat;
 
   if (isDefTurn && !bidding.locked) {
-    if (strong >= 1 || spots >= 2) hostHandleBidAction(seat, 'BID', Math.min(16 + strong, 20));
+    if (strong >= 1 || spots >= 2) hostHandleBidAction(seat, 'BID', 16);
     else hostHandleBidAction(seat, 'PASS');
     return;
   }
@@ -823,6 +830,7 @@ function startDoubleWindow() {
   setRoomStatus('DOUBLE_WINDOW');
   pointMultiplier = 1;
   db.ref(`rooms/${myRoomCode}/meta/pointMultiplier`).set(1);
+  doubleResponses = {};
   const opps = SEATS.filter(s => partnerships[s] !== partnerships[roomMeta.bidWinnerSeat]);
   opps.forEach(s => { if (players[s] && players[s].isBot) setTimeout(() => botDoubleDecision(s), 1200); });
 }
@@ -830,19 +838,28 @@ function startDoubleWindow() {
 function hostHandleDoubleChoice(seat, choice) {
   if (!isHost || !roomMeta || roomMeta.status !== 'DOUBLE_WINDOW') return;
   if (partnerships[seat] === partnerships[roomMeta.bidWinnerSeat]) return;
+  if (doubleResponses[seat]) return; // already answered, ignore duplicates
+  doubleResponses[seat] = choice;
+
   if (choice === 'DOUBLE') {
     pointMultiplier = 2;
     db.ref(`rooms/${myRoomCode}/meta/pointMultiplier`).set(2);
-    pushLog('অপোনেন্ট গেম ডবল করেছেন!');
+    pushLog(`${seatLabel(seat)} গেম ডবল করেছেন!`);
     startRedoubleWindow();
-  } else {
-    pushLog(`${seatLabel(seat)} ডবল স্কিপ করলেন। খেলা স্বাভাবিক থাকবে।`);
+    return;
+  }
+
+  pushLog(`${seatLabel(seat)} ডবল স্কিপ করলেন।`);
+  const opps = SEATS.filter(s => partnerships[s] !== partnerships[roomMeta.bidWinnerSeat]);
+  if (opps.every(s => doubleResponses[s])) {
+    pushLog('উভয় প্রতিপক্ষ ডবল স্কিপ করেছেন। খেলা স্বাভাবিক থাকবে।');
     proceedToSecondDeal();
   }
 }
 
 function startRedoubleWindow() {
   setRoomStatus('REDOUBLE_WINDOW');
+  redoubleResponses = {};
   const teamSeats = SEATS.filter(s => partnerships[s] === partnerships[roomMeta.bidWinnerSeat]);
   teamSeats.forEach(s => { if (players[s] && players[s].isBot) setTimeout(() => botRedoubleDecision(s), 1200); });
 }
@@ -850,14 +867,23 @@ function startRedoubleWindow() {
 function hostHandleRedoubleChoice(seat, choice) {
   if (!isHost || !roomMeta || roomMeta.status !== 'REDOUBLE_WINDOW') return;
   if (partnerships[seat] !== partnerships[roomMeta.bidWinnerSeat]) return;
+  if (redoubleResponses[seat]) return;
+  redoubleResponses[seat] = choice;
+
   if (choice === 'REDOUBLE') {
     pointMultiplier = 4;
     db.ref(`rooms/${myRoomCode}/meta/pointMultiplier`).set(4);
-    pushLog('উইনার টিম রি-ডাবল করেছেন!');
-  } else {
-    pushLog('উইনার টিম রি-ডাবল করেননি। ডাবল বহাল থাকবে।');
+    pushLog(`${seatLabel(seat)} রি-ডাবল করেছেন!`);
+    proceedToSecondDeal();
+    return;
   }
-  proceedToSecondDeal();
+
+  pushLog(`${seatLabel(seat)} রি-ডাবল স্কিপ করলেন।`);
+  const teamSeats = SEATS.filter(s => partnerships[s] === partnerships[roomMeta.bidWinnerSeat]);
+  if (teamSeats.every(s => redoubleResponses[s])) {
+    pushLog('উভয়েই রি-ডাবল স্কিপ করেছেন। ডাবল বহাল থাকবে।');
+    proceedToSecondDeal();
+  }
 }
 
 // Bot heuristics: opponents double vs a human winner's high bid (22+);
@@ -924,6 +950,7 @@ function resetRoundState() {
   bidding = null; trump = null; doubleState = null; singlePlay = null;
   singlePlayQueueLocal = []; trick = null; tricksWon = {}; teamPoints = { 1: 0, 2: 0 };
   pairDeclared = null; currentTurnSeat = null; pendingSecondHands = {}; pointMultiplier = 1; trickNumber = 1;
+  doubleResponses = {}; redoubleResponses = {}; singleDoubleResponses = {};
 
   const code = myRoomCode;
   db.ref(`rooms/${code}/bidding`).set(null);
@@ -986,6 +1013,7 @@ function startSinglePlayFor(seat) {
   singlePlay = { active: true, seat, partnerSeat: getPartnerSeat(seat), opponentDoubled: false, state: 'ACTIVE' };
   db.ref(`rooms/${myRoomCode}/singlePlay`).set(singlePlay);
   setRoomStatus('SINGLE_PLAY_DOUBLE_WINDOW');
+  singleDoubleResponses = {};
   pushLog(`${seatLabel(seat)} সিঙ্গেল খেলা শুরু করলেন!`);
   const opps = SEATS.filter(s => partnerships[s] !== partnerships[seat]);
   opps.forEach(s => { if (players[s] && players[s].isBot) setTimeout(() => botSingleDoubleDecision(s), 1000); });
@@ -994,10 +1022,23 @@ function startSinglePlayFor(seat) {
 function hostHandleSingleDoubleChoice(seat, choice) {
   if (!isHost || !roomMeta || roomMeta.status !== 'SINGLE_PLAY_DOUBLE_WINDOW' || !singlePlay) return;
   if (partnerships[seat] === partnerships[singlePlay.seat]) return;
-  singlePlay.opponentDoubled = choice === 'DOUBLE';
-  db.ref(`rooms/${myRoomCode}/singlePlay`).set(singlePlay);
-  pushLog(choice === 'DOUBLE' ? 'অপোনেন্ট সিঙ্গেল ডবল করেছেন! (৬ পয়েন্ট)' : 'অপোনেন্ট ডবল স্কিপ করলেন। (৩ পয়েন্ট)');
-  beginTrickPlay();
+  if (singleDoubleResponses[seat]) return;
+  singleDoubleResponses[seat] = choice;
+
+  if (choice === 'DOUBLE') {
+    singlePlay.opponentDoubled = true;
+    db.ref(`rooms/${myRoomCode}/singlePlay`).set(singlePlay);
+    pushLog(`${seatLabel(seat)} সিঙ্গেল ডবল করেছেন! (৬ পয়েন্ট)`);
+    beginTrickPlay();
+    return;
+  }
+
+  pushLog(`${seatLabel(seat)} সিঙ্গেল ডবল স্কিপ করলেন।`);
+  const opps = SEATS.filter(s => partnerships[s] !== partnerships[singlePlay.seat]);
+  if (opps.every(s => singleDoubleResponses[s])) {
+    pushLog('উভয় প্রতিপক্ষ স্কিপ করেছেন। (৩ পয়েন্ট)');
+    beginTrickPlay();
+  }
 }
 function botSingleDoubleDecision(seat) { hostHandleSingleDoubleChoice(seat, Math.random() < 0.3 ? 'DOUBLE' : 'SKIP'); }
 
@@ -1401,9 +1442,16 @@ function renderLobbySeats() {
   }
 }
 
+let lastPartnerChoiceSignature = null;
+
 function renderPartnershipPanel() {
   const list = document.getElementById('partner-choice-list');
   if (!list) return;
+
+  const signature = ['east', 'north', 'west'].map(s => (players[s] && players[s].name) || '').join('|');
+  if (signature === lastPartnerChoiceSignature) return; // nothing changed — leave the user's selection alone
+  lastPartnerChoiceSignature = signature;
+
   const currentChoice = document.querySelector('input[name="partner-choice"]:checked');
   const currentValue = currentChoice ? currentChoice.value : 'north';
   list.innerHTML = '';
