@@ -155,6 +155,7 @@ let singlePlayWindowResponses = {};
 
 let activeListeners = [];
 let bannerTimer = null;
+let lastBannerTs = null;
 let singlePlayWindowTimer = null;
 let lastRenderedStatus = null;
 let modalSkippedForStatus = null;
@@ -178,6 +179,7 @@ function seatLabel(seat) { return SEAT_LABELS_BN[seat] || seat; }
 // Prefer the actual player's name in log/score text; falls back to the
 // compass position only if a name isn't known yet (e.g. an empty seat).
 function playerName(seat) { return (players[seat] && players[seat].name) || seatLabel(seat); }
+function teamName(team) { return SEATS.filter(s => partnerships[s] === team).map(playerName).join(' ও '); }
 function clampBid(value, min, max) {
   let v = parseInt(value, 10);
   if (isNaN(v)) v = min;
@@ -517,6 +519,13 @@ function attachRoomListeners() {
   listenOn(roomRef.child('currentTurnSeat'), 'value', snap => { currentTurnSeat = snap.val() || null; renderEverything(); });
   listenOn(roomRef.child('scoreHistory'), 'value', snap => renderScoreHistory(snap.val()));
   listenOn(roomRef.child('log'), 'child_added', snap => appendLogEntry(snap.val()));
+  listenOn(roomRef.child('banner'), 'value', snap => {
+    const b = snap.val();
+    if (b && b.ts !== lastBannerTs) {
+      lastBannerTs = b.ts;
+      showBannerLocal(b.text, b.duration);
+    }
+  });
 
   if (isHost) {
     listenOn(roomRef.child('hands'), 'value', snap => { latestHands = snap.val() || {}; myHand = latestHands[mySeat] || null; renderEverything(); });
@@ -836,9 +845,11 @@ function hostHandleTrumpChoice(seat, value) {
     db.ref(`rooms/${myRoomCode}/hands/${seat}`).set(latestHands[seat]);
     db.ref(`rooms/${myRoomCode}/handCounts/${seat}`).set(latestHands[seat].length);
     pushLog(`${playerName(seat)} দ্বিতীয় অপশনে ট্রাম্প সেট করেছেন। (রঙ গোপন)`);
+    showBanner(`${playerName(seat)} "সেকেন্ড" অপশনে ট্রাম্প ঠিক করেছেন — রং এখনো গোপন!`, 3500);
   } else {
     trump = { suit: value, revealed: false, method: 'DIRECT' };
     pushLog(`${playerName(seat)} ট্রাম্প কালার সেট করেছেন।`);
+    showBanner(`${playerName(seat)} ট্রাম্প কালার ঠিক করেছেন।`, 2500);
   }
   db.ref(`rooms/${myRoomCode}/trump`).set(trump);
   startDoubleWindow();
@@ -1351,7 +1362,7 @@ function saveRoundToScoreHistory(winningTeam, delta) {
     trump: trump ? SUIT_SYMBOL[trump.suit] : '--',
     team1: teamScores[1].points, team1Sets: teamScores[1].sets, team1Label: t1,
     team2: teamScores[2].points, team2Sets: teamScores[2].sets, team2Label: t2,
-    winnerLabel: winningTeam === 1 ? 'দল ১' : 'দল ২', delta
+    winnerLabel: teamName(winningTeam), delta
   });
 }
 
@@ -1400,10 +1411,10 @@ function finishRound() {
       const winnerTricks = winnerSeats.reduce((s, seat) => s + (tricksWon[seat] || 0), 0);
       if (winnerTricks === 8) {
         bonus = 1;
-        pushLog(`${winningTeam === 1 ? 'দল ১' : 'দল ২'} সবকটি ৮টি দান জিতে ১ বোনাস পয়েন্ট পেলেন!`);
+        pushLog(`${teamName(winningTeam)} সবকটি ৮টি দান জিতে ১ বোনাস পয়েন্ট পেলেন!`);
       }
     }
-    pushLog(`রাউন্ড শেষ। ${winningTeam === 1 ? 'দল ১' : 'দল ২'} জয়ী! লক্ষ্য ছিল ${bnNum(target)}, তারা তুলেছেন ${bnNum(bidTeamPoints)}।`);
+    pushLog(`রাউন্ড শেষ। ${teamName(winningTeam)} জয়ী! লক্ষ্য ছিল ${bnNum(target)}, তারা তুলেছেন ${bnNum(bidTeamPoints)}।`);
   }
 
   const totalDelta = delta + bonus;
@@ -1412,7 +1423,7 @@ function finishRound() {
   db.ref(`rooms/${myRoomCode}/teamScores`).set(teamScores);
 
   saveRoundToScoreHistory(winningTeam, totalDelta);
-  showBanner(`রাউন্ড শেষ! ${winningTeam === 1 ? 'দল ১' : 'দল ২'} +${bnNum(totalDelta)} পয়েন্ট।`, 4500);
+  showBanner(`রাউন্ড শেষ! ${teamName(winningTeam)} +${bnNum(totalDelta)} পয়েন্ট।`, 4500);
   setTimeout(() => rotateDealerAndStartNextRound(), 3500);
 }
 
@@ -1788,12 +1799,21 @@ function appendLogEntry(entry) {
   body.scrollTop = 0;
 }
 
-function showBanner(message, duration) {
+function showBannerLocal(message, duration) {
   const el = document.getElementById('game-banner');
   el.textContent = message;
   el.classList.remove('is-hidden');
   if (bannerTimer) clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => el.classList.add('is-hidden'), duration || 3200);
+}
+
+// Table-wide announcements (bidding won, trump revealed, round cancelled,
+// etc.) must be visible on EVERY player's screen, not just the host's —
+// so instead of touching the DOM directly, this writes the message to
+// Firebase; every client (host included) shows it via the listener below.
+function showBanner(message, duration) {
+  if (!myRoomCode) { showBannerLocal(message, duration); return; }
+  db.ref(`rooms/${myRoomCode}/banner`).set({ text: message, duration: duration || 3200, ts: firebase.database.ServerValue.TIMESTAMP });
 }
 
 /* ---- Popup modal (Trump choice / Double / Redouble / Single Play) ---- */
