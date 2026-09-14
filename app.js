@@ -894,7 +894,10 @@ function hostHandleTrumpChoice(seat, value) {
     showBanner(`${playerName(seat)} ট্রাম্প কালার ঠিক করেছেন।`, 2500);
   }
   db.ref(`rooms/${myRoomCode}/trump`).set(trump);
-  startDoubleWindow();
+  setRoomStatus('TRUMP_ANNOUNCED');
+  // Give everyone a moment to actually see the "trump was set" announcement
+  // before the Double prompt appears on top of it.
+  setTimeout(() => startDoubleWindow(), 3000);
 }
 
 
@@ -1022,6 +1025,11 @@ function runCancellationChecks345() {
   const oppTrumpTotal = oppSeats.reduce((sum, s) => sum + (latestHands[s] || []).filter(c => c.suit === trump.suit).length, 0);
   if (oppTrumpTotal === 0) { cancelAndRedeal('প্রতিপক্ষের কাছে কোনো ট্রাম্প কার্ড নেই। রাউন্ড বাতিল।'); return; }
 
+  if (pointMultiplier === 4) {
+    pushLog('রি-ডাবল অবস্থায় সিঙ্গেল খেলার সুযোগ নেই। স্বাভাবিক খেলা শুরু হচ্ছে।');
+    startNormalPlay();
+    return;
+  }
   startSinglePlayWindow();
 }
 
@@ -1099,6 +1107,7 @@ function hostHandleSingleSkip(seat) {
   if (!isHost || !roomMeta || roomMeta.status !== 'SINGLE_PLAY_WINDOW') return;
   if (singlePlayWindowResponses[seat]) return; // already answered
   singlePlayWindowResponses[seat] = 'SKIP';
+  pushLog(`${playerName(seat)} সিঙ্গেল স্কিপ করলেন।`);
   maybeFinalizeSinglePlayWindow();
 }
 
@@ -1695,6 +1704,15 @@ function renderDealerBadge() {
   });
 }
 
+function renderSecondOptionBadge() {
+  const rotation = computeMyRotation();
+  const showFor = (trump && trump.method === 'SECOND' && roomMeta) ? roomMeta.bidWinnerSeat : null;
+  SEATS.forEach(slot => {
+    const chip = document.getElementById('second-chip-' + slot);
+    if (chip) chip.classList.toggle('is-hidden', !showFor || rotation[slot] !== showFor);
+  });
+}
+
 function showBidBadge(actualSeat, amount) {
   const slot = screenSlotForSeat(actualSeat);
   const badge = document.getElementById('bid-bubble-' + slot);
@@ -2026,6 +2044,7 @@ function renderEverything() {
   renderMetaUI();
   renderGameSeatMarkers();
   renderDealerBadge();
+  renderSecondOptionBadge();
   renderBiddingUI();
   renderTrumpUI();
   renderTrick();
