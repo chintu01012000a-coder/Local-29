@@ -13,21 +13,28 @@
    Console -> Project settings -> General -> Your apps -> SDK setup).
    ===================================================================== */
 
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDKgkuUHrkBYz7Ze47q35kemuZBupcVB_M",
-  authDomain: "callbreak-local.firebaseapp.com",
-  projectId: "callbreak-local",
-  storageBucket: "callbreak-local.firebasestorage.app",
-  messagingSenderId: "697439144169",
-  appId: "1:697439144169:web:c7176361df380a07788878"
+  apiKey: "AIzaSyDVbCa4CzJV-O7gJHBkf_DPifUsQJWcHpc",
+  authDomain: "local-cc0b6.firebaseapp.com",
+  databaseURL: "https://local-cc0b6-default-rtdb.firebaseio.com",
+  projectId: "local-cc0b6",
+  storageBucket: "local-cc0b6.firebasestorage.app",
+  messagingSenderId: "391143435553",
+  appId: "1:391143435553:web:fbd91cef38d1ee5581a260",
+  measurementId: "G-LY2YHJFV0P"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-
-// Initialize the Firebase app once, using the v8 "compat" namespaced API.
-firebase.initializeApp(firebaseConfig);
-
+const analytics = getAnalytics(app);
 // Shared handles used throughout app.js
 const db = firebase.database();
 const auth = firebase.auth();
