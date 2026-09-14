@@ -997,6 +997,16 @@ img, svg {
   color: var(--color-ivory);
 }
 
+.second-chip {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1.5px solid var(--color-brass-light);
+  color: var(--color-brass-light);
+}
+
 /* ---------- Hand dock ---------- */
 
 .hand-dock {
@@ -1034,8 +1044,8 @@ img, svg {
   margin-left: 0;
 }
 
-.hand-card:hover,
-.hand-card:active {
+.hand-card.is-playable:hover,
+.hand-card.is-playable:active {
   transform: translateY(-10px);
   z-index: 5;
 }
@@ -1186,17 +1196,18 @@ img, svg {
 
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   display: flex;
-  align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: rgba(2, 12, 8, 0.72);
-  backdrop-filter: blur(2px);
+  pointer-events: none;
 }
 
 .modal-card {
+  pointer-events: auto;
   width: 100%;
   max-width: 380px;
   padding: var(--space-5);
