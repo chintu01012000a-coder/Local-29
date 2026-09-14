@@ -157,6 +157,9 @@ let activeListeners = [];
 let bannerTimer = null;
 let lastBannerTs = null;
 let singlePlayWindowTimer = null;
+let doubleWindowTimer = null;
+let redoubleWindowTimer = null;
+let singleDoubleWindowTimer = null;
 let lastRenderedStatus = null;
 let modalSkippedForStatus = null;
 
@@ -209,6 +212,34 @@ function computeRoles(dealer) {
   const p2 = COMPASS_CYCLE[(i + 2) % 4];
   const p3 = COMPASS_CYCLE[(i + 3) % 4];
   return { dealer, p1, p2, p3, dealOrder: [p1, p2, p3, dealer] };
+}
+
+// ---- Per-viewer table rotation --------------------------------------------
+// The compass names (north/south/east/west) are the FIXED, real seat/data
+// keys used everywhere for game logic (bidding order, dealer rotation,
+// partnerships) — that part never changes and is the same for everyone.
+// But the four screen positions the table is DRAWN at (bottom/right/top/
+// left, using the same north/south/east/west CSS/DOM ids purely as screen
+// slots) should always put the LOCAL viewer at the bottom, with the other
+// three players arranged anti-clockwise around them. computeMyRotation()
+// returns { screenSlot: actualSeatKey } — i.e. which real player currently
+// belongs at each screen position, from this browser's point of view.
+function computeMyRotation() {
+  const seat = mySeat || 'south';
+  const idx = COMPASS_CYCLE.indexOf(seat) === -1 ? 0 : COMPASS_CYCLE.indexOf(seat);
+  return {
+    south: COMPASS_CYCLE[(idx + 0) % 4], // screen-bottom = me, always
+    east: COMPASS_CYCLE[(idx + 1) % 4],  // screen-right = next anti-clockwise
+    north: COMPASS_CYCLE[(idx + 2) % 4], // screen-top = across from me
+    west: COMPASS_CYCLE[(idx + 3) % 4]   // screen-left = previous anti-clockwise
+  };
+}
+
+// Inverse of the above: given a real seat key, which screen slot does it
+// currently render at for THIS viewer.
+function screenSlotForSeat(actualSeat) {
+  const rotation = computeMyRotation();
+  return Object.keys(rotation).find(slot => rotation[slot] === actualSeat) || actualSeat;
 }
 
 function nextSeatInPlay(seat) {
@@ -867,6 +898,12 @@ function startDoubleWindow() {
   doubleResponses = {};
   const opps = SEATS.filter(s => partnerships[s] !== partnerships[roomMeta.bidWinnerSeat]);
   opps.forEach(s => { if (players[s] && players[s].isBot) setTimeout(() => botDoubleDecision(s), 1200); });
+  if (doubleWindowTimer) clearTimeout(doubleWindowTimer);
+  doubleWindowTimer = setTimeout(() => {
+    if (roomMeta.status === 'DOUBLE_WINDOW') {
+      opps.forEach(s => { if (!doubleResponses[s]) hostHandleDoubleChoice(s, 'SKIP'); });
+    }
+  }, 20000);
 }
 
 function hostHandleDoubleChoice(seat, choice) {
@@ -896,6 +933,12 @@ function startRedoubleWindow() {
   redoubleResponses = {};
   const teamSeats = SEATS.filter(s => partnerships[s] === partnerships[roomMeta.bidWinnerSeat]);
   teamSeats.forEach(s => { if (players[s] && players[s].isBot) setTimeout(() => botRedoubleDecision(s), 1200); });
+  if (redoubleWindowTimer) clearTimeout(redoubleWindowTimer);
+  redoubleWindowTimer = setTimeout(() => {
+    if (roomMeta.status === 'REDOUBLE_WINDOW') {
+      teamSeats.forEach(s => { if (!redoubleResponses[s]) hostHandleRedoubleChoice(s, 'SKIP'); });
+    }
+  }, 20000);
 }
 
 function hostHandleRedoubleChoice(seat, choice) {
@@ -981,6 +1024,9 @@ function cancelAndRedeal(message) {
 
 function resetRoundState() {
   if (singlePlayWindowTimer) { clearTimeout(singlePlayWindowTimer); singlePlayWindowTimer = null; }
+  if (doubleWindowTimer) { clearTimeout(doubleWindowTimer); doubleWindowTimer = null; }
+  if (redoubleWindowTimer) { clearTimeout(redoubleWindowTimer); redoubleWindowTimer = null; }
+  if (singleDoubleWindowTimer) { clearTimeout(singleDoubleWindowTimer); singleDoubleWindowTimer = null; }
   bidding = null; trump = null; doubleState = null; singlePlay = null;
   singlePlayQueueLocal = []; trick = null; tricksWon = {}; teamPoints = { 1: 0, 2: 0 };
   pairDeclared = null; currentTurnSeat = null; pendingSecondHands = {}; pointMultiplier = 1; trickNumber = 1;
@@ -1020,7 +1066,7 @@ function startSinglePlayWindow() {
   if (singlePlayWindowTimer) clearTimeout(singlePlayWindowTimer);
   // Safety-net only, in case a human's browser never responds (e.g. they
   // closed the tab) — everyone still gets a real chance to answer first.
-  singlePlayWindowTimer = setTimeout(() => finalizeSinglePlayWindow(), 30000);
+  singlePlayWindowTimer = setTimeout(() => finalizeSinglePlayWindow(), 20000);
   maybeFinalizeSinglePlayWindow();
 }
 
@@ -1074,6 +1120,12 @@ function startSinglePlayFor(seat) {
   pushLog(`${playerName(seat)} সিঙ্গেল খেলা শুরু করলেন!`);
   const opps = SEATS.filter(s => partnerships[s] !== partnerships[seat]);
   opps.forEach(s => { if (players[s] && players[s].isBot) setTimeout(() => botSingleDoubleDecision(s), 1000); });
+  if (singleDoubleWindowTimer) clearTimeout(singleDoubleWindowTimer);
+  singleDoubleWindowTimer = setTimeout(() => {
+    if (roomMeta.status === 'SINGLE_PLAY_DOUBLE_WINDOW' && singlePlay && singlePlay.seat === seat) {
+      opps.forEach(s => { if (!singleDoubleResponses[s]) hostHandleSingleDoubleChoice(s, 'SKIP'); });
+    }
+  }, 20000);
 }
 
 function hostHandleSingleDoubleChoice(seat, choice) {
@@ -1588,46 +1640,53 @@ function renderMetaUI() {
 }
 
 function renderGameSeatMarkers() {
-  SEATS.forEach(seat => {
-    const p = players[seat];
+  const rotation = computeMyRotation();
+  SEATS.forEach(slot => {
+    const actualSeat = rotation[slot];
+    const p = players[actualSeat];
     if (!p) return;
-    const nameEl = document.getElementById('marker-name-' + seat);
-    const avatarEl = document.getElementById('marker-avatar-' + seat);
-    if (nameEl) nameEl.textContent = seat === mySeat ? 'আপনি' : (p.name || '—');
+    const nameEl = document.getElementById('marker-name-' + slot);
+    const avatarEl = document.getElementById('marker-avatar-' + slot);
+    if (nameEl) nameEl.textContent = actualSeat === mySeat ? 'আপনি' : (p.name || '—');
     if (avatarEl) avatarEl.textContent = (p.name || '?').charAt(0);
   });
   renderHandCounts();
 }
 
 function renderHandCounts() {
-  SEATS.forEach(seat => {
-    const el = document.getElementById('marker-count-' + seat);
+  const rotation = computeMyRotation();
+  SEATS.forEach(slot => {
+    const actualSeat = rotation[slot];
+    const el = document.getElementById('marker-count-' + slot);
     if (!el) return;
-    if (seat === mySeat) { el.textContent = myName || 'আপনি'; return; }
-    const c = handCounts[seat];
+    if (actualSeat === mySeat) { el.textContent = myName || 'আপনি'; return; }
+    const c = handCounts[actualSeat];
     el.textContent = (c !== undefined ? bnNum(c) : '০') + ' টি কার্ড';
   });
 }
 
 function renderDealerBadge() {
-  SEATS.forEach(seat => {
-    const chip = document.getElementById('dealer-chip-' + seat);
-    if (chip) chip.classList.toggle('is-hidden', seat !== dealerSeat);
+  const rotation = computeMyRotation();
+  SEATS.forEach(slot => {
+    const chip = document.getElementById('dealer-chip-' + slot);
+    if (chip) chip.classList.toggle('is-hidden', rotation[slot] !== dealerSeat);
   });
 }
 
-function showBidBadge(seat, amount) {
-  const badge = document.getElementById('bid-bubble-' + seat);
+function showBidBadge(actualSeat, amount) {
+  const slot = screenSlotForSeat(actualSeat);
+  const badge = document.getElementById('bid-bubble-' + slot);
   if (badge) { badge.textContent = 'ডাক ' + bnNum(amount); badge.classList.remove('is-hidden'); }
 }
 function clearBidBadges() {
-  SEATS.forEach(seat => { const b = document.getElementById('bid-bubble-' + seat); if (b) b.classList.add('is-hidden'); });
+  SEATS.forEach(slot => { const b = document.getElementById('bid-bubble-' + slot); if (b) b.classList.add('is-hidden'); });
 }
 
-function highlightTurnSeat(seat) {
-  SEATS.forEach(s => {
-    const marker = document.getElementById('seat-marker-' + s);
-    if (marker) marker.classList.toggle('seat-marker--turn', !!seat && s === seat);
+function highlightTurnSeat(actualSeat) {
+  const rotation = computeMyRotation();
+  SEATS.forEach(slot => {
+    const marker = document.getElementById('seat-marker-' + slot);
+    if (marker) marker.classList.toggle('seat-marker--turn', !!actualSeat && rotation[slot] === actualSeat);
   });
 }
 
@@ -1684,16 +1743,18 @@ function renderTrumpUI() {
 }
 
 function renderTrick() {
-  SEATS.forEach(seat => {
-    const slot = document.getElementById('trick-slot-' + seat);
-    if (!slot) return;
-    slot.innerHTML = '';
-    const card = trick && trick.cardsPlayed ? trick.cardsPlayed[seat] : null;
+  const rotation = computeMyRotation();
+  SEATS.forEach(screenSlot => {
+    const actualSeat = rotation[screenSlot];
+    const slotEl = document.getElementById('trick-slot-' + screenSlot);
+    if (!slotEl) return;
+    slotEl.innerHTML = '';
+    const card = trick && trick.cardsPlayed ? trick.cardsPlayed[actualSeat] : null;
     if (card) {
       const div = document.createElement('div');
       div.className = 'played-card';
       div.innerHTML = `<span>${card.rank}</span><span class="${SUIT_CLASS[card.suit]}">${SUIT_SYMBOL[card.suit]}</span>`;
-      slot.appendChild(div);
+      slotEl.appendChild(div);
     }
   });
 }
@@ -1715,10 +1776,19 @@ function isCardPlayable(card) {
   return true;
 }
 
+const SUIT_DISPLAY_ORDER = ['S', 'H', 'D', 'C'];
+function sortHandForDisplay(hand) {
+  return [...hand].sort((a, b) => {
+    const suitDiff = SUIT_DISPLAY_ORDER.indexOf(a.suit) - SUIT_DISPLAY_ORDER.indexOf(b.suit);
+    if (suitDiff !== 0) return suitDiff;
+    return POWER_ORDER.indexOf(a.rank) - POWER_ORDER.indexOf(b.rank);
+  });
+}
+
 function renderMyHand() {
   const dock = document.getElementById('hand-dock');
   dock.innerHTML = '';
-  (myHand || []).forEach(card => {
+  sortHandForDisplay(myHand || []).forEach(card => {
     const playable = isCardPlayable(card);
     const isLockedHidden = card.locked && !(trump && trump.revealed);
     const div = document.createElement('div');
