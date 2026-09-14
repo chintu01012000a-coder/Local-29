@@ -304,6 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
     console.error('Anonymous sign-in failed:', err);
     alert('সংযোগ স্থাপনে সমস্যা হয়েছে। ইন্টারনেট সংযোগ পরীক্ষা করে পাতাটি রিফ্রেশ করুন।');
   });
+
+  // Safety-net heartbeat: re-render the hand/turn UI every couple of
+  // seconds regardless of listener events. This is cheap insurance
+  // against a card ever looking "stuck" (tappable-but-nothing-happens)
+  // if some rare Firebase event ordering left the local render stale.
+  setInterval(() => {
+    if (myRoomCode && roomMeta && roomMeta.status === 'PLAYING') {
+      renderMyHand();
+      renderPlayActionsBar();
+    }
+  }, 2000);
 });
 
 function wireStaticUI() {
@@ -1169,6 +1180,7 @@ function beginTrickPlay() {
   trick = { leaderSeat: leader, cardsPlayed: {}, leadSuit: null, trumpForcedSeat: null };
   db.ref(`rooms/${myRoomCode}/trick`).set(trick);
   setTurnSeat(leader);
+  pushLog(`তাস খেলা শুরু হয়েছে! প্রথম চাল দেবেন ${playerName(leader)}।`);
   maybeTriggerBotCardPlay();
 }
 
@@ -1196,13 +1208,23 @@ function setBidWinner(seat, amount) {
 }
 
 function hostHandlePlayCard(seat, cardKey) {
-  if (!isHost || !roomMeta || roomMeta.status !== 'PLAYING' || !trick) return;
-  if (seat !== currentTurnSeat) return;
+  if (!isHost) return;
+  if (!roomMeta || roomMeta.status !== 'PLAYING' || !trick) {
+    pushLog(`⚠️ ${playerName(seat)} তাস খেলার চেষ্টা করেছেন, কিন্তু খেলা এখনো "PLAYING" অবস্থায় নেই (স্ট্যাটাস: ${roomMeta ? roomMeta.status : 'অজানা'})।`);
+    return;
+  }
+  if (seat !== currentTurnSeat) {
+    pushLog(`⚠️ ${playerName(seat)} তাস খেলার চেষ্টা করেছেন, কিন্তু এখন পালা ${playerName(currentTurnSeat)}-এর।`);
+    return;
+  }
   if (singlePlay && singlePlay.active && seat === singlePlay.partnerSeat) return; // deactivated
 
   const hand = latestHands[seat] || [];
   const idx = hand.findIndex(c => c.suit === cardKey.suit && c.rank === cardKey.rank);
-  if (idx === -1) return;
+  if (idx === -1) {
+    pushLog(`⚠️ ${playerName(seat)} এমন একটি তাস খেলার চেষ্টা করেছেন যা তার হাতে নেই।`);
+    return;
+  }
   const card = hand[idx];
   if (card.locked && !(trump && trump.revealed)) return; // locked 7th card (Second option)
 
