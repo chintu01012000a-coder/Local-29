@@ -1216,7 +1216,7 @@ function setBidWinner(seat, amount) {
   db.ref(`rooms/${myRoomCode}/meta/bidWinnerAmount`).set(amount);
 }
 
-function hostHandlePlayCard(seat, cardKey) {
+async function hostHandlePlayCard(seat, cardKey) {
   if (!isHost) return;
   if (!roomMeta || roomMeta.status !== 'PLAYING' || !trick) {
     pushLog(`⚠️ ${playerName(seat)} তাস খেলার চেষ্টা করেছেন, কিন্তু খেলা এখনো "PLAYING" অবস্থায় নেই (স্ট্যাটাস: ${roomMeta ? roomMeta.status : 'অজানা'})।`);
@@ -1228,12 +1228,36 @@ function hostHandlePlayCard(seat, cardKey) {
   }
   if (singlePlay && singlePlay.active && seat === singlePlay.partnerSeat) return; // deactivated
 
-  const hand = latestHands[seat] || [];
-  const idx = hand.findIndex(c => c.suit === cardKey.suit && c.rank === cardKey.rank);
+  let hand = latestHands[seat] || [];
+  let idx = hand.findIndex(c => c.suit === cardKey.suit && c.rank === cardKey.rank);
+
   if (idx === -1) {
-    pushLog(`⚠️ ${playerName(seat)} এমন একটি তাস খেলার চেষ্টা করেছেন যা তার হাতে নেই।`);
-    return;
+    // Our in-memory copy might be stale — re-check directly against
+    // Firebase once before giving up, instead of trusting the local cache.
+    let freshHand = null;
+    try {
+      const snap = await db.ref(`rooms/${myRoomCode}/hands/${seat}`).once('value');
+      freshHand = snap.val() || [];
+    } catch (err) {
+      console.error('Fresh hand re-check failed:', err);
+    }
+
+    // State may have moved on during that round-trip — re-validate.
+    if (!roomMeta || roomMeta.status !== 'PLAYING' || !trick || seat !== currentTurnSeat) return;
+
+    if (freshHand) {
+      latestHands[seat] = freshHand;
+      hand = freshHand;
+      idx = hand.findIndex(c => c.suit === cardKey.suit && c.rank === cardKey.rank);
+    }
+
+    if (idx === -1) {
+      const haveList = hand.map(c => c.rank + SUIT_SYMBOL[c.suit]).join(' ');
+      pushLog(`⚠️ ${playerName(seat)} ${cardKey.rank}${SUIT_SYMBOL[cardKey.suit]} খেলার চেষ্টা করেছেন, কিন্তু তার হাতে আছে: ${haveList || '(খালি)'}।`);
+      return;
+    }
   }
+
   const card = hand[idx];
   if (card.locked && !(trump && trump.revealed)) return; // locked 7th card (Second option)
 
