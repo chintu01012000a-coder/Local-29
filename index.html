@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20260915">
 </head>
 <body>
 
@@ -172,6 +172,7 @@
       </div>
 
       <p class="entry-footnote">হোস্ট করলে একটি নতুন রুম কোড তৈরি হবে, যা আপনি বন্ধুদের সাথে শেয়ার করতে পারবেন।</p>
+      <p class="entry-footnote" id="app-version-label" style="opacity:0.5; margin-top:4px;">সংস্করণ: 20260915</p>
     </div>
   </section>
 
@@ -498,9 +499,16 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <!-- Project config must load BEFORE app.js, since app.js uses the
-     `db` / `auth` objects that firebase-config.js creates. -->
-<script src="firebase-config.js"></script>
-<script src="app.js"></script>
+     `db` / `auth` objects that firebase-config.js creates.
+
+     The ?v=... query string on these two files is intentional cache-
+     busting: mobile browsers (and GitHub Pages) can aggressively cache
+     .js files, so without a version marker a phone can keep running an
+     OLD copy of the game logic indefinitely even after this file is
+     updated on GitHub — with no visible sign anything is wrong. Bump
+     this date string any time app.js or firebase-config.js changes. -->
+<script src="firebase-config.js?v=20260915"></script>
+<script src="app.js?v=20260915"></script>
 
 </body>
 </html>
