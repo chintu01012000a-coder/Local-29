@@ -13,28 +13,19 @@
    Console -> Project settings -> General -> Your apps -> SDK setup).
    ===================================================================== */
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDVbCa4CzJV-O7gJHBkf_DPifUsQJWcHpc",
-  authDomain: "local-cc0b6.firebaseapp.com",
-  databaseURL: "https://local-cc0b6-default-rtdb.firebaseio.com",
-  projectId: "local-cc0b6",
-  storageBucket: "local-cc0b6.firebasestorage.app",
-  messagingSenderId: "391143435553",
-  appId: "1:391143435553:web:fbd91cef38d1ee5581a260",
-  measurementId: "G-LY2YHJFV0P"
+  apiKey: "AIzaSyD80SHFncZzbNOHmUPgE_3wyW4f8uUtymY",
+  authDomain: "twentynine-game-5b68d.firebaseapp.com",
+  databaseURL: "https://twentynine-game-5b68d-default-rtdb.firebaseio.com",
+  projectId: "twentynine-game-5b68d",
+  storageBucket: "twentynine-game-5b68d.firebasestorage.app",
+  messagingSenderId: "143674788167",
+  appId: "1:143674788167:web:277c10f5dbac11e9f16462"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Initialize the Firebase app once, using the v8 "compat" namespaced API.
+firebase.initializeApp(firebaseConfig);
+
 // Shared handles used throughout app.js
 const db = firebase.database();
 const auth = firebase.auth();
