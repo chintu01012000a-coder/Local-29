@@ -338,6 +338,8 @@ function wireStaticUI() {
   document.getElementById('btn-trump-reveal').addEventListener('click', () => submitAction('TRUMP_REVEAL_CHOICE', { choice: 'TRUMP' }));
   document.getElementById('btn-no-trump').addEventListener('click', () => submitAction('TRUMP_REVEAL_CHOICE', { choice: 'NO_TRUMP' }));
   document.getElementById('btn-declare-pair').addEventListener('click', () => submitAction('DECLARE_PAIR'));
+
+  document.getElementById('hand-dock').addEventListener('click', handleHandDockClick);
 }
 
 function wireCodeBoxes() {
@@ -1861,21 +1863,32 @@ function renderMyHand() {
     const div = document.createElement('div');
     div.className = 'hand-card' + (playable ? ' is-playable' : '') + (isLockedHidden ? ' hand-card--locked' : '') +
       ((!playable && !isLockedHidden && roomMeta && roomMeta.status === 'PLAYING' && mySeat === currentTurnSeat) ? ' is-disabled' : '');
+    div.dataset.suit = card.suit;
+    div.dataset.rank = card.rank;
     div.innerHTML = `<span class="hand-card-rank">${card.rank}</span><span class="hand-card-suit ${SUIT_CLASS[card.suit]}">${SUIT_SYMBOL[card.suit]}</span>` +
       (isLockedHidden ? '<span class="hand-card-lock" title="ট্রাম্প উন্মোচিত না হওয়া পর্যন্ত এই তাসটি খেলা যাবে না">🔒</span>' : '');
-    if (playable) {
-      div.addEventListener('click', () => submitAction('PLAY_CARD', { suit: card.suit, rank: card.rank }));
-    } else {
-      // Diagnostic tap: if a card looks like it should be playable but
-      // isn't, tapping it now reports THIS client's own local view of the
-      // game state — this can reveal a client-side sync issue that the
-      // host would never see, since the host only knows what IT thinks.
-      div.addEventListener('click', () => {
-        pushLog(`🔍 ${myName || mySeat} ${card.rank}${SUIT_SYMBOL[card.suit]}-এ ট্যাপ করলেন। আমার আসন: ${mySeat || '?'}, স্ট্যাটাস: ${roomMeta ? roomMeta.status : '?'}, বর্তমান পালা: ${currentTurnSeat || '?'}, ট্রিক ডেটা আছে: ${trick ? 'হ্যাঁ' : 'না'}।`);
-      });
-    }
     dock.appendChild(div);
   });
+}
+
+// Single, permanent, delegated handler for the whole hand — attached ONCE
+// in wireStaticUI(), never re-attached per render. This re-checks
+// isCardPlayable() fresh at the exact moment of the tap (not relying on
+// whatever was true when the card was last rendered), and it CANNOT fail
+// to fire the way a stale per-card listener theoretically could.
+function handleHandDockClick(e) {
+  const cardEl = e.target.closest('.hand-card');
+  if (!cardEl || !dockContainsCard(cardEl)) return;
+  const card = { suit: cardEl.dataset.suit, rank: cardEl.dataset.rank };
+  if (isCardPlayable(card)) {
+    submitAction('PLAY_CARD', { suit: card.suit, rank: card.rank });
+  } else {
+    pushLog(`🔍 ${myName || mySeat} ${card.rank}${SUIT_SYMBOL[card.suit]}-এ ট্যাপ করলেন (ডেলিগেটেড)। আমার আসন: ${mySeat || '?'}, স্ট্যাটাস: ${roomMeta ? roomMeta.status : '?'}, বর্তমান পালা: ${currentTurnSeat || '?'}, ট্রিক ডেটা আছে: ${trick ? 'হ্যাঁ' : 'না'}।`);
+  }
+}
+function dockContainsCard(el) {
+  const dock = document.getElementById('hand-dock');
+  return dock && dock.contains(el);
 }
 
 function playerNeedsTrumpChoiceLocal() {
@@ -2090,3 +2103,4 @@ function renderEverything() {
   renderPhaseUI();
   highlightTurnSeat(bidding && !bidding.biddingClosed ? bidding.turnSeat : (roomMeta && roomMeta.status === 'PLAYING' ? currentTurnSeat : null));
 }
+
